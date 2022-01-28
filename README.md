@@ -77,4 +77,4 @@ Known opcodes:
   * Res: `<0xFF>(<8b R><8b G><8b B>)*NUM_PIXELS` | `0x04`
 * `0x84` Get total brightness
   * Req: `<0x84>`
-  * Res: `<0XFF><0x00-0xFF>
+  * Res: `<0xFF><0x00-0xFF>`
