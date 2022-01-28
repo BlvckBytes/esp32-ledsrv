@@ -44,8 +44,12 @@ Known resultcodes:
 * `0x02` Argument missing
 * `0x03` Too little/too many pixels
 * `0x04` Frame index out of range
+* `0x05` Pixel color out of range
+* `0x06` Brightness out of range
 
 Known opcodes:
+
+0x00-0x7F is setting and 0x80-0xFF is getting data.
 
 * `0x00` Set frame duration in ms
   * Req: `<0x00><0x05>` 5ms/frame
@@ -55,16 +59,22 @@ Known opcodes:
   * Res: `0x00` | `0x01` | `0x02` | `0x04`
 * `0x02` Set frame content by index in framebuffer
   * Req: `<0x02><0x0000-0xFFFF>(<8b R><8b G><8b B>)*NUM_PIXELS` Set frame
-  * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04`
-* `0x03` Get frame duration in ms
-  * Req: `<0x03>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05`
+* `0x03` Set total brightness
+  * Req: `<0x03><0x00-0xFF>`
+  * Res: `0x00` | `0x01` | `0x02`| `0x06`
+* `0x80` Get frame duration in ms
+  * Req: `<0x80>`
   * Res: `<0xFF><0x0000-0xFFFF>`
-* `0x04` Get active number of frames
-  * Req: `<0x04>`
+* `0x81` Get active number of frames
+  * Req: `<0x81>`
   * Res: `<0xFF><0x0000-0xFFFF>`
-* `0x05` Get available number of frame slots
-  * Req: `<0x05>`
+* `0x82` Get available number of frame slots
+  * Req: `<0x82>`
   * Res: `<0xFF><0x0000-0xFFFF>`
-* `0x06` Get frame content by index
-  * Req: `<0x06><0x0000-0xFFFF>`
+* `0x83` Get frame content by index
+  * Req: `<0x83><0x0000-0xFFFF>`
   * Res: `<0xFF>(<8b R><8b G><8b B>)*NUM_PIXELS` | `0x04`
+* `0x84` Get total brightness
+  * Req: `<0x84>`
+  * Res: `<0XFF><0x00-0xFF>
