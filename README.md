@@ -16,6 +16,8 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Serving write requests
 - [ ] Serving read requests
 - [ ] Cancel processing invalid (segmented) requests ASAP
+- [ ] Client authentication
+- [ ] Protect against MITM
 
 ... and many more.
 
