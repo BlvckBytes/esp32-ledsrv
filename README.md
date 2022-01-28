@@ -15,6 +15,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Request handler switching on OpCodes
 - [ ] Serving write requests
 - [ ] Serving read requests
+- [ ] Frame/Pixel handler
 - [ ] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
 - [ ] Protect against MITM
