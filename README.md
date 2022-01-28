@@ -11,11 +11,13 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [x] Debugging log over serial
 - [x] Connect to WiFi
 - [x] Automatically reconnect on connection losses
+- [ ] Open AP when STA connect failed three times in a row (but keep on trying)
 - [ ] Binary WebSocket server
 - [ ] Request handler switching on OpCodes
 - [ ] Serving write requests
 - [ ] Serving read requests
 - [ ] Frame/Pixel handler
+- [ ] SD card R/W for persistent data
 - [ ] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
 - [ ] Protect against MITM
@@ -34,47 +36,54 @@ Responses are made up similarly:
 
 `<8b resultcode><optional result data>`
 
-Frame indices as well as frame durations are always represented by two bytes, for future proofness. As of now, all other data is byte-based.
+Frame indices, frame durations and string lengths are always represented by two bytes, for future proofness. As of now, all other data is byte-based.
 
 Known resultcodes:
 
 * `0xFF` Success, data is the following bytes
 * `0x00` Success, no data
 * `0x01` Text message received
-* `0x02` Argument missing
+* `0x02` Argument(s) missing
 * `0x03` Too little/too many pixels
 * `0x04` Frame index out of range
 * `0x05` Pixel color out of range
 * `0x06` Brightness out of range
+* `0x07` String not terminated
 
 Known opcodes:
 
 0x00-0x7F is setting and 0x80-0xFF is getting data.
 
 * `0x00` Set frame duration in ms
-  * Req: `<0x00><0x05>` 5ms/frame
+  * Fmt: `<0x00><duration uint_16t>`
   * Res: `0x00` | `0x01` | `0x02`
 * `0x01` Set active number of frames
-  * Req: `<0x01><0x04>` 4 active frames total
+  * Fmt: `<0x01><num_frames uint_16t>`
   * Res: `0x00` | `0x01` | `0x02` | `0x04`
 * `0x02` Set frame content by index in framebuffer
-  * Req: `<0x02><0x0000-0xFFFF>(<8b R><8b G><8b B>)*NUM_PIXELS` Set frame
+  * Fmt: `<0x02><frame_index uint16_t>(<R uint8_t><G uint8_t><B uint8_t>)*num_pixels`
   * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05`
 * `0x03` Set total brightness
-  * Req: `<0x03><0x00-0xFF>`
+  * Fmt: `<0x03><brightness uint8_t>`
   * Res: `0x00` | `0x01` | `0x02`| `0x06`
+* `0x04` Set WiFi credentials
+  * Fmt: `<0x04>(<0x00-0xFF>)*ssid_strlen(<0x00-0xFF>)*pass_strlen`
+  * Res: `0x00` | `0x01` | `0x02` | `0x07`
 * `0x80` Get frame duration in ms
-  * Req: `<0x80>`
+  * Fmt: `<0x80>`
   * Res: `<0xFF><0x0000-0xFFFF>`
 * `0x81` Get active number of frames
-  * Req: `<0x81>`
+  * Fmt: `<0x81>`
   * Res: `<0xFF><0x0000-0xFFFF>`
 * `0x82` Get available number of frame slots
-  * Req: `<0x82>`
+  * Fmt: `<0x82>`
   * Res: `<0xFF><0x0000-0xFFFF>`
 * `0x83` Get frame content by index
-  * Req: `<0x83><0x0000-0xFFFF>`
-  * Res: `<0xFF>(<8b R><8b G><8b B>)*NUM_PIXELS` | `0x04`
+  * Fmt: `<0x83><frame_index uint16_t>`
+  * Res: `<0xFF>(<8b R><8b G><8b B>)*num_pixels` | `0x04`
 * `0x84` Get total brightness
-  * Req: `<0x84>`
+  * Fmt: `<0x84>`
   * Res: `<0xFF><0x00-0xFF>`
+* `0x85` Get current SSID
+  * Fmt: `<0x85>`
+  * Res: `<0xFF>(<0x00-0xFF>)*ssid_strlen`
