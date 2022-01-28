@@ -11,7 +11,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [x] Debugging log over serial
 - [x] Connect to WiFi
 - [x] Automatically reconnect on connection losses
-- [ ] Open AP when STA connect failed three times in a row (but keep on trying)
+- [x] Open AP when STA connect failed multiple times in a row (but keep on trying)
 - [ ] Binary WebSocket server
 - [ ] Request handler switching on OpCodes
 - [ ] Serving write requests

@@ -1,9 +1,9 @@
 #include <wifi_handler.h>
 #include <dbg_log.h>
+#include <tcpip_adapter.h>
 
-#define format_ip_addr(ip) ip.toString().c_str()
-
-void wlh_dbg_ap_conn_info() {
+void wfh_dbg_sta_conn_info()
+{
   dbg_log(
     "{\n"
     "  local_ip: %s\n"
@@ -20,7 +20,40 @@ void wlh_dbg_ap_conn_info() {
   );
 }
 
-bool wlh_is_connected() {
+void wfh_dbg_ap_conn_info()
+{
+  // Check if AP is really configured
+  if(
+    WiFiGenericClass::getMode() != WIFI_MODE_AP &&
+    WiFiGenericClass::getMode() != WIFI_MODE_APSTA
+  )
+  {
+    dbg_log("No AP to debug configured!\n");
+    return;
+  }
+
+  // Get AP iface info
+  tcpip_adapter_ip_info_t ip;
+  tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip);
+
+  dbg_log(
+    "{\n"
+    "  local_ip: %s\n"
+    "  submet_mask: %s\n"
+    "  gateway: %s\n"
+    "  ssid: %s\n"
+    "  pass: %s\n"
+    "}\n",
+    format_ip_addr(IPAddress(ip.ip.addr)),
+    format_ip_addr(IPAddress(ip.netmask.addr)),
+    format_ip_addr(IPAddress(ip.gw.addr)),
+    WiFi.softAPSSID().c_str(),
+    WFH_CONF_AP_PASS == NULL ? "NULL" : WFH_CONF_AP_PASS
+  );
+}
+
+bool wfh_is_connected()
+{
   return (
     // Status needs to be connected
     WiFi.status() == WL_CONNECTED &&
@@ -30,18 +63,78 @@ bool wlh_is_connected() {
   );
 }
 
-bool wlh_connect_ap_dhcp(const char* ssid, const char* password, long timeout) {
-  // Connect to the provided station
-  dbg_log("Attempting to connect to an AP...\n");
-  WiFi.mode(WIFI_STA);
+void wfh_create_ap(
+  const char* ssid,
+  const char* password,
+  IPAddress gateway
+)
+{
+  // Open AP but still remain looking for stations
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.hostname(WFH_HOSTN);
+
+  WiFi.softAPConfig(
+    IPAddress(192, 168, 1, 1),
+    gateway,
+    IPAddress(255, 255, 255, 0)
+  );
+  if (WiFi.softAP(ssid, password))
+  {
+    dbg_log("AP created!\n");
+    wfh_dbg_ap_conn_info();
+  }
+  else
+  {
+    dbg_log("Could not create AP!\n");
+  }
+}
+
+void wfh_close_ap()
+{
+  if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA)
+  {
+    WiFi.mode(WIFI_STA);
+    dbg_log("Disabled AP mode and went back to STA only!\n");
+  }
+}
+
+bool wfh_connect_sta_dhcp(const char* ssid, const char* password, long timeout)
+{
+
+  // Connection trial counter
+  static int connection_trials = 0;
+
+  // Connect to the provided station, init as STA/AP
+  dbg_log("Attempting to connect to a STA...\n");
+
+  // Don't override STA&AP mode
+  if (WiFi.getMode() != WIFI_AP_STA)
+    WiFi.mode(WIFI_STA);
+
+  // Set hostname and init connection
+  WiFi.hostname(WFH_HOSTN);
   WiFi.begin(ssid, password);
 
   // Avait connection
   long started = millis();
-  while (!wlh_is_connected()) {
+  while (!wfh_is_connected())
+  {
     // Timed out
-    if (millis() - started > timeout) {
+    if (millis() - started > timeout)
+    {
       dbg_log("WiFi connection timed out!\n");
+      
+      // Trials reached threshold, launch AP
+      if (++connection_trials == WFH_CONN_TRIALS_UNTIL_AP)
+      {
+        dbg_log("Reconnect attemp threshold of %d reached!\n", connection_trials);
+        wfh_create_ap(
+          WFH_CONF_AP_SSID,
+          WFH_CONF_AP_PASS,
+          IPAddress(192, 168, 1, 254)
+        );
+      }
+
       return false;
     }
 
@@ -50,8 +143,11 @@ bool wlh_connect_ap_dhcp(const char* ssid, const char* password, long timeout) {
   }
 
   dbg_log("Received config from DHCP:\n");
-  wlh_dbg_ap_conn_info();
+  wfh_dbg_sta_conn_info();
 
-  // Connection was a success
+  // Connection was a success, reset trials and close AP
+  connection_trials = 0;
+  wfh_close_ap();
+
   return true;
 }

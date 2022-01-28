@@ -2,26 +2,36 @@
 #include <dbg_log.h>
 #include <wifi_handler.h>
 
-// Network credentials
-// INFO: This should later reside within EEPROM
-#define WL_SSID "handygurkn_2"
-#define WL_PASS "unogetinhea"
-#define WL_TIMEOUT 15000
+bool ensure_connected()
+{
+  if (!wfh_is_connected())
+  {
+    // Reconnect if connection broke for some reason
+    dbg_log("Reconnect initialized!\n");
+    bool success = wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
 
-void setup() {
+    // Successful reconnect, continue program
+    if (success) return true;
+
+    // Unsuccessful, delay between trials
+    delay(WFH_RECONN_DEL);
+    return false;
+  }
+
+  // Active connection exists
+  return true;
+}
+
+void setup()
+{
   // Set up debugging capabilities
   init_dbg_log(115200);
 
   // Initial network connect attempt
-  wlh_connect_ap_dhcp(WL_SSID, WL_PASS, WL_TIMEOUT);
+  wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
 }
 
-void loop() {
-  // Reconnect if connection broke for some reason
-  if (!wlh_is_connected()) {
-    dbg_log("Reconnect initialized!\n");
-    wlh_connect_ap_dhcp(WL_SSID, WL_PASS, WL_TIMEOUT);
-  }
-
-  delay(200);
+void loop()
+{
+  if (!ensure_connected()) return;
 }
