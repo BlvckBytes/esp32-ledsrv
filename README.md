@@ -14,14 +14,14 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [x] Open AP when STA connect failed multiple times in a row (but keep on trying)
 - [X] Binary WebSocket server
 - [X] Request handler switching on OpCodes
-- [-] Serving write requests
-- [-] Serving read requests
+- [-] Serving write requests (missing strings)
+- [-] Serving read requests (missing strings)
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
-- [ ] SD card hotplug
+- [ ] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
-- [ ] Cancel processing invalid (segmented) requests ASAP
+- [X] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
 - [ ] Protect against MITM
 

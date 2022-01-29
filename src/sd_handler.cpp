@@ -23,6 +23,5 @@ File sdh_open_vars_file(const char* mode)
 
 File sdh_open_frames_file(const char* mode)
 {
-
   return sdh_open_create_if_not_exists(SDH_FILE_FRAMES, mode);
 }
