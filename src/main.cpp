@@ -4,6 +4,7 @@
 #include <web_server_handler.h>
 #include <web_socket_handler.h>
 #include <sd_handler.h>
+#include <variable_store.h>
 
 void setup()
 {
@@ -15,6 +16,11 @@ void setup()
 
   // Initialize SD card slot
   sdh_init();
+
+  // Patch variables from file into memory
+  vars_patch_from_json_file(
+    sdh_open_vars_file("r")
+  );
 
   // Initialize web server
   wsrvh_init();
