@@ -16,6 +16,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] Request handler switching on OpCodes
 - [-] Serving write requests (missing strings)
 - [-] Serving read requests (missing strings)
+- [ ] Central event system
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
@@ -40,6 +41,17 @@ Responses are made up similarly:
 `<8b resultcode><optional result data>`
 
 Frame indices, frame durations and string lengths are always represented by two bytes, for future proofness. As of now, all other data is byte-based.
+
+Events send data to the client if their channel has been subscribed beforehand.
+
+Known eventcodes:
+
+* `0x00` Frame duration changed
+* `0x01` Active number of frames changed
+* `0x02` Frame content deployed
+* `0x03` Total brightness changed
+* `0x04` WiFi credentials changed
+* `0x05` SD card availability changed
 
 Known resultcodes:
 
@@ -74,6 +86,9 @@ Known opcodes:
 * `0x04` Set WiFi credentials
   * Fmt: `<0x04>(<0x00-0xFF>)*ssid_strlen(<0x00-0xFF>)*pass_strlen`
   * Res: `0x00` | `0x01` | `0x02` | `0x07`
+* `0x05` Set event subscription state
+  * Fmt: `<0x05><eventcode uint8_t><state_bool uint8_t>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x08`
 * `0x80` Get frame duration in ms
   * Fmt: `<0x80>`
   * Res: `<0xFF><0x0000-0xFFFF>`
@@ -96,3 +111,8 @@ Known opcodes:
   * Fmt: `<0x86>`
   * Res: `<0xFF><total_size uint16_t>` | `0x09`
 
+### Event Structure
+
+Events are the only way the server can communicate with it's clients. Packets are formatted in this manner:
+
+`<8b eventcode><optional event data>`
