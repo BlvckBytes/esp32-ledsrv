@@ -19,8 +19,11 @@
 
 /**
  * @brief Initialize the SD card slot
+ * 
+ * @return true SD initialized
+ * @return false No SD card found
  */
-void sdh_init();
+bool sdh_init();
 
 /**
  * @brief Open the frames file

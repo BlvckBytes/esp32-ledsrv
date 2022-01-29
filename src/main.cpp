@@ -6,6 +6,11 @@
 #include <sd_handler.h>
 #include <variable_store.h>
 
+#include <sd_diskio.h>
+#define PRINT_DEL 5000
+long last_print = millis();
+bool sd_inited = false;
+
 void setup()
 {
   // Set up debugging capabilities
@@ -15,10 +20,10 @@ void setup()
   wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
 
   // Initialize SD card slot
-  sdh_init();
+  sd_inited = sdh_init();
 
   // Patch variables from file into memory
-  vars_patch_from_json_file();
+  // vars_patch_from_json_file();
 
   // Initialize web server
   wsrvh_init();
@@ -33,4 +38,32 @@ void loop()
 
   // Clean up web socket server
   wsockh_cleanup();
+
+  if (millis() - last_print > PRINT_DEL) {
+    last_print = millis();
+
+    // Try to init SD now
+    if (!sd_inited)
+      sd_inited = sdh_init();
+
+    // Don't continue on
+    if (!sd_inited) return;
+
+    uint32_t resp = UINT32_MAX;
+
+    // SEND_STATUS = 13, responds with R2 (2 bytes)
+    // WARNING: This took two patches:
+    // WARNING: * Add sdCommand to sd_diskio.h
+    // WARNING: * Make _pdrv public inside SD.h
+    sdCommand(SD._pdrv, 13, 0, &resp);
+
+    if (resp == UINT32_MAX)
+    {
+      sd_inited = false;
+      SD.end();
+      dbg_log("De-inited SD!\n");
+    }
+
+    dbg_log("SD card available: %s\n", resp == UINT32_MAX ? "no" : "yes");
+  }
 }

@@ -1,12 +1,16 @@
 #include <sd_handler.h>
 
-void sdh_init()
+bool sdh_init()
 {
   // Begin SD library using known pin layout
-  if (SD.begin(SDH_PIN_CS)) {
+  bool result = SD.begin(SDH_PIN_CS);
+
+  if (result) {
     dbg_log("SD card slot initialized (type=%" PRIu8 ")!\n", SD.cardType());
   } else
     dbg_log("Could not initialize SD card slot!\n");
+
+  return result;
 }
 
 File sdh_open_create_if_not_exists(const char* path, const char* mode)

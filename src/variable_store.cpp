@@ -31,13 +31,14 @@ void vars_patch_from_json_file()
 {
   // Read the file into a buffer
   File f = sdh_open_vars_file("r");
-  size_t fsz = f.size();
-  char contents[fsz];
-  for (int i = 0; i < fsz; i++)
+  dbg_log("available=%d\n", f.available());
+  size_t f_sz = f.size();
+  char contents[f_sz];
+  for (int i = 0; i < f_sz; i++)
     contents[i] = f.read();
 
   // Deserialize file content
-  DynamicJsonDocument json_doc(fsz);
+  DynamicJsonDocument json_doc(f_sz);
   DeserializationError json_err = deserializeJson(json_doc, contents);
 
   // Log error

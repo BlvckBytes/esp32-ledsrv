@@ -21,6 +21,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
 - [ ] SD card hotplug (+write latest state)
+- [ ] SD card handle wrong FS
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
 - [X] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
