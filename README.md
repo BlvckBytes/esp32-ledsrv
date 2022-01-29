@@ -19,7 +19,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
-- [ ] SD card hotplug
+- [ ] SD card hotplug (+write latest state)
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
 - [X] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
@@ -53,6 +53,7 @@ Known resultcodes:
 * `0x06` Brightness out of range
 * `0x07` String not terminated
 * `0x08` Empty request
+* `0x09` Could not access SD card
 
 Known opcodes:
 
@@ -66,7 +67,7 @@ Known opcodes:
   * Res: `0x00` | `0x01` | `0x02` | `0x04`
 * `0x02` Set frame content by index in framebuffer
   * Fmt: `<0x02><frame_index uint16_t>(<R uint8_t><G uint8_t><B uint8_t>)*num_pixels`
-  * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05`
+  * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05` | `0x09`
 * `0x03` Set total brightness
   * Fmt: `<0x03><brightness uint8_t>`
   * Res: `0x00` | `0x01` | `0x02`| `0x06`
@@ -81,13 +82,17 @@ Known opcodes:
   * Res: `<0xFF><0x0000-0xFFFF>`
 * `0x82` Get available number of frame slots
   * Fmt: `<0x82>`
-  * Res: `<0xFF><0x0000-0xFFFF>`
+  * Res: `<0xFF><0x0000-0xFFFF>` | `0x09`
 * `0x83` Get frame content by index
   * Fmt: `<0x83><frame_index uint16_t>`
-  * Res: `<0xFF>(<8b R><8b G><8b B>)*num_pixels` | `0x04`
+  * Res: `<0xFF>(<8b R><8b G><8b B>)*num_pixels` | `0x04` | `0x09`
 * `0x84` Get total brightness
   * Fmt: `<0x84>`
   * Res: `<0xFF><0x00-0xFF>`
 * `0x85` Get current SSID
   * Fmt: `<0x85>`
   * Res: `<0xFF>(<0x00-0xFF>)*ssid_strlen`
+* `0x86` Get SD card total size in MB
+  * Fmt: `<0x86>`
+  * Res: `<0xFF><total_size uint16_t>` | `0x09`
+
