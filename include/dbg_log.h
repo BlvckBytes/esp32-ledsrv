@@ -4,10 +4,11 @@
 #include <Arduino.h>
 
 // Whether or not to route debug log calls
-#define DEBUG_MODE_ACTIVE true
+#define DBGL_ACTIVE true
+#define DBGL_BAUD 115200
 
 // Debug is active, route requests to serial comm
-#if DEBUG_MODE_ACTIVE
+#if DBGL_ACTIVE
 #define dbg_log(...) Serial.printf(__VA_ARGS__)
 
 // Debug is inactive, do nothing
@@ -17,9 +18,7 @@
 
 /**
  * @brief Initialize the debug logging functionality
- * 
- * @param baud Serial communication speed
  */
-void init_dbg_log(int baud);
+void init_dbg_log();
 
 #endif

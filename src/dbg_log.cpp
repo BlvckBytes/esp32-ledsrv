@@ -1,10 +1,10 @@
 #include <dbg_log.h>
 
-void init_dbg_log(int baud)
+void init_dbg_log()
 {
   // Only initialize serial communication when in debugging mode
-  #if DEBUG_MODE_ACTIVE
-  Serial.begin(baud);
+  #if DBGL_ACTIVE
+  Serial.begin(DBGL_BAUD);
 
   // "Flush" out
   Serial.println();

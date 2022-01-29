@@ -1,37 +1,25 @@
 #include <Arduino.h>
 #include <dbg_log.h>
 #include <wifi_handler.h>
-
-bool ensure_connected()
-{
-  if (!wfh_is_connected())
-  {
-    // Reconnect if connection broke for some reason
-    dbg_log("Reconnect initialized!\n");
-    bool success = wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
-
-    // Successful reconnect, continue program
-    if (success) return true;
-
-    // Unsuccessful, delay between trials
-    delay(WFH_RECONN_DEL);
-    return false;
-  }
-
-  // Active connection exists
-  return true;
-}
+#include <web_server_handler.h>
+#include <web_socket_handler.h>
 
 void setup()
 {
   // Set up debugging capabilities
-  init_dbg_log(115200);
+  init_dbg_log();
 
   // Initial network connect attempt
   wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
+
+  // Initialize web server
+  wsrvh_init();
+
+  // Initialize websocket server on top of web server
+  wsockh_init();
 }
 
 void loop()
 {
-  if (!ensure_connected()) return;
+  if (!wfh_ensure_connected()) return;
 }

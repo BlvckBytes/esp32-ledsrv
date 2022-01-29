@@ -14,13 +14,13 @@
 
 // STA network config
 // INFO: This should later reside within EEPROM
-#define WFH_SSID "handygurkn_2"
-#define WFH_PASS "unogetinhea"
+#define WFH_SSID "HL_HNET_2"
+#define WFH_PASS "mysql2001"
 
 // STA timeouts
-// WARNING: These are tight for dev-phase only!
-#define WFH_TIMEOUT 5000
-#define WFH_RECONN_DEL 300
+#define WFH_TIMEOUT 15000
+#define WFH_CONN_STATUS_CACHE 1000
+#define WFH_RECONN_COOLDOWN 2000
 
 // Device information
 #define WFH_HOSTN "ESP32_LedSrv"
@@ -94,5 +94,13 @@ bool wfh_is_connected();
  * @brief Print the currently active access point connection info
  */
 void wfh_dbg_ap_conn_info();
+
+/**
+ * @brief Ensure that an active connection exists, reconnect otherwise
+ * 
+ * @return true When an active connection is present or when reconnect succeeded
+ * @return false When no connection exists and reconnecting failed
+ */
+bool wfh_ensure_connected();
 
 #endif

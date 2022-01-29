@@ -2,6 +2,9 @@
 #include <dbg_log.h>
 #include <tcpip_adapter.h>
 
+long wfh_conn_last_check = millis();
+long wfh_last_recon = millis();
+
 void wfh_dbg_sta_conn_info()
 {
   dbg_log(
@@ -54,13 +57,23 @@ void wfh_dbg_ap_conn_info()
 
 bool wfh_is_connected()
 {
-  return (
+  static bool result_cache = false;
+
+  // Return cached value
+  if (millis() - wfh_conn_last_check < WFH_CONN_STATUS_CACHE)
+    return result_cache;
+
+  // Write new value into cache
+  result_cache = (
     // Status needs to be connected
     WiFi.status() == WL_CONNECTED &&
 
     // IP shall not be 0.0.0.0
     WiFi.localIP() != INADDR_NONE
   );
+
+  wfh_conn_last_check = millis();
+  return result_cache;
 }
 
 void wfh_create_ap(
@@ -100,7 +113,6 @@ void wfh_close_ap()
 
 bool wfh_connect_sta_dhcp(const char* ssid, const char* password, long timeout)
 {
-
   // Connection trial counter
   static int connection_trials = 0;
 
@@ -137,9 +149,6 @@ bool wfh_connect_sta_dhcp(const char* ssid, const char* password, long timeout)
 
       return false;
     }
-
-    // Slow down checking to a sane rate
-    delay(100);
   }
 
   dbg_log("Received config from DHCP:\n");
@@ -149,5 +158,36 @@ bool wfh_connect_sta_dhcp(const char* ssid, const char* password, long timeout)
   connection_trials = 0;
   wfh_close_ap();
 
+  return true;
+}
+
+bool wfh_ensure_connected()
+{
+
+  if (!wfh_is_connected())
+  {
+    // Skip until cooldown expired
+    if (millis() - wfh_last_recon < WFH_RECONN_COOLDOWN)
+      return false;
+
+    // Reconnect if connection broke for some reason
+    dbg_log("Reconnect initialized!\n");
+    bool success = wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
+
+    // Reactivate cooldown
+    wfh_last_recon = millis();
+
+    // Successful reconnect, continue program
+    if (success) {
+      // Force conn status cache update
+      wfh_conn_last_check -= WFH_CONN_STATUS_CACHE;
+      return true;
+    }
+
+    // Unsuccessful
+    return false;
+  }
+
+  // Active connection exists
   return true;
 }

@@ -12,10 +12,10 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [x] Connect to WiFi
 - [x] Automatically reconnect on connection losses
 - [x] Open AP when STA connect failed multiple times in a row (but keep on trying)
-- [ ] Binary WebSocket server
-- [ ] Request handler switching on OpCodes
-- [ ] Serving write requests
-- [ ] Serving read requests
+- [X] Binary WebSocket server
+- [X] Request handler switching on OpCodes
+- [-] Serving write requests
+- [-] Serving read requests
 - [ ] Frame/Pixel handler
 - [ ] SD card R/W for persistent data
 - [ ] Cancel processing invalid (segmented) requests ASAP
@@ -49,6 +49,7 @@ Known resultcodes:
 * `0x05` Pixel color out of range
 * `0x06` Brightness out of range
 * `0x07` String not terminated
+* `0x08` Empty request
 
 Known opcodes:
 
