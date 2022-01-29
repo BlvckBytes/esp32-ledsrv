@@ -3,6 +3,10 @@
 
 AsyncWebSocket wsockh_ws(WSOCKH_PATH);
 
+// Request remainder buffer
+static AsyncWebSocketRequestRemainder wsockh_request_remainders[WSOCKH_REQUEST_REMAINDERS_LEN];
+static uint8_t wsockh_request_remainder_pointer = 0;
+
 /**
  * @brief Send a binary response to the client while adding a leading response code
  * 
@@ -150,6 +154,61 @@ bool wsockh_handle_single_packet_req(
 }
 
 /**
+ * @brief Check if a request is terminated already and thus can be ignored
+ * 
+ * @param client Origin of the target request
+ * @param read_len Length of current packet
+ * 
+ * @return true Request can be ignored
+ * @return false Request is valid and needs processing
+ */
+bool wsockh_is_request_terminated(AsyncWebSocketClient *client, size_t read_len)
+{
+  for (int i = 0; i < WSOCKH_REQUEST_REMAINDERS_LEN; i++)
+  {
+    AsyncWebSocketRequestRemainder *tar = &wsockh_request_remainders[i];
+
+    // Search on
+    if (tar->client != client) continue;
+
+    // No remainder
+    if (tar->remainder <= 0) continue;
+
+    // Request is ignored
+    tar->remainder -= read_len;
+    dbg_log("Ignoring terminated request from client %" PRIu32 " remaining %" PRIu64 "!\n", client->id(), tar->remainder);
+    return true;
+  }
+
+  // No entry available, not terminated
+  return false;
+}
+
+/**
+ * @brief Terminate a request by marking the remaining bytes that are to be received as ignoreable
+ * 
+ * @param client Origin of the target request
+ * @param info Frame info to calculate remaining size
+ * @param read_len Length of current packet
+ */
+// WARNING: This is quite complicated and needs extensive testing!
+void wsockh_terminate_request(AsyncWebSocketClient *client, AwsFrameInfo *info, size_t read_len)
+{
+  uint64_t remainder = info->len - read_len;
+
+  // Nothing to ignore
+  if (remainder <= 0) return;
+
+  // Register remainder
+  AsyncWebSocketRequestRemainder rem = { client, remainder };
+
+  // Add to ringbuffer
+  wsockh_request_remainders[wsockh_request_remainder_pointer] = rem;
+  dbg_log("Writing request ignore at %" PRIu8 " for client %" PRIu32 " remaining %" PRIu64 "!\n", wsockh_request_remainder_pointer, client->id(), remainder);
+  wsockh_request_remainder_pointer = (wsockh_request_remainder_pointer + 1) % WSOCKH_REQUEST_REMAINDERS_LEN;
+}
+
+/**
  * @brief Handle incoming request data from the websocket
  * 
  * @param client Request issuer
@@ -165,28 +224,36 @@ void wsockh_handle_data(
 )
 {
   // Never accept non-binary data
-  if (info->opcode != WS_BINARY) {
+  if (info->opcode != WS_BINARY)
+  {
     wsockh_send_resp(client, ERR_TEXT_RECV);
     return;
   }
 
   // Never accept empty requests
-  if (info->len == 0) {
+  if (info->len == 0)
+  {
     wsockh_send_resp(client, ERR_REQ_EMPTY);
     return;
   }
+
+  // Don't act on this packet, it's no longer relevant
+  if (wsockh_is_request_terminated(client, len))
+    return;
 
   // OpCode always is represented by the first byte
   uint8_t opcode = data[0];
 
   // Handle single frame requests
-  // WARNING: What if a frame *would* be single packeted, but is larger because of a client error? This would still trigger multiple invocations...
   if (wsockh_handle_single_packet_req(client, info, data, len)) {
-    dbg_log("Single frame request opcode=%#04X handled!", opcode);
+    dbg_log("Single frame request opcode=%#04X handled!\n", opcode);
+
+    // Don't process this request any further, if it has any trailing data
+    wsockh_terminate_request(client, info, len);
     return;
   }
 
-  dbg_log("opcode=%" PRIu8 ", message_opcode=%" PRIu8 ", index=%" PRIu64 ", num=%" PRIu32 ", final=%" PRIu8 ", len=%" PRIu64 ", masked=%" PRIu8 "datalen=%" PRIu16 "\n", info->opcode, info->message_opcode, info->index, info->num, info->final, info->len, info->masked, len);
+  dbg_log("Non single packet request encountered, not yet implemented!\n");
 }
 
 void wsockh_ev_handler(
@@ -226,4 +293,9 @@ void wsockh_init()
 {
   wsockh_ws.onEvent(wsockh_ev_handler);
   wsrvh_register_handler(&wsockh_ws);
+}
+
+void wsockh_cleanup()
+{
+  wsockh_ws.cleanupClients();
 }

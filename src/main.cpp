@@ -22,4 +22,7 @@ void setup()
 void loop()
 {
   if (!wfh_ensure_connected()) return;
+
+  // Clean up web socket server
+  wsockh_cleanup();
 }
