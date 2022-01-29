@@ -27,9 +27,10 @@ void vars_dbg_store()
   );
 }
 
-void vars_patch_from_json_file(File f)
+void vars_patch_from_json_file()
 {
   // Read the file into a buffer
+  File f = sdh_open_vars_file("r");
   size_t fsz = f.size();
   char contents[fsz];
   for (int i = 0; i < fsz; i++)
@@ -64,9 +65,26 @@ void vars_patch_from_json_file(File f)
   vars_dbg_store();
 }
 
-void vars_write_to_json_file(File f)
+void vars_write_to_json_file()
 {
-  dbg_log("vars_write_to_json_file");
+  // Open file for write access, create document
+  File f = sdh_open_vars_file("w");
+
+  DynamicJsonDocument json_doc(VARS_JSON_WRITEBUF_CAPA);
+
+  // Add all store vars to the doc
+  vars_add_var_to_json_doc(json_doc, frame_dur);
+  vars_add_var_to_json_doc(json_doc, num_frames);
+  vars_add_var_to_json_doc(json_doc, brightness);
+  vars_add_var_to_json_doc(json_doc, wifi_ssid);
+  vars_add_var_to_json_doc(json_doc, wifi_pass);
+
+  // Write buffer to file
+  serializeJsonPretty(json_doc, f);
+
+  // Close resource
+  f.close();
+  dbg_log("Wrote variables store to file!\n");
 }
 
 VariableStore* vars_get()

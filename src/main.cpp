@@ -18,9 +18,7 @@ void setup()
   sdh_init();
 
   // Patch variables from file into memory
-  vars_patch_from_json_file(
-    sdh_open_vars_file("r")
-  );
+  vars_patch_from_json_file();
 
   // Initialize web server
   wsrvh_init();

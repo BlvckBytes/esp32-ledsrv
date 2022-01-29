@@ -17,8 +17,9 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [-] Serving write requests
 - [-] Serving read requests
 - [ ] Frame/Pixel handler
-- [ ] SD card JSON for variables
+- [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
+- [ ] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
 - [ ] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
