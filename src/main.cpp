@@ -3,6 +3,7 @@
 #include <wifi_handler.h>
 #include <web_server_handler.h>
 #include <web_socket_handler.h>
+#include <sd_handler.h>
 
 void setup()
 {
@@ -11,6 +12,9 @@ void setup()
 
   // Initial network connect attempt
   wfh_connect_sta_dhcp(WFH_SSID, WFH_PASS, WFH_TIMEOUT);
+
+  // Initialize SD card slot
+  sdh_init();
 
   // Initialize web server
   wsrvh_init();
