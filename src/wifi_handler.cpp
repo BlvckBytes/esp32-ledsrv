@@ -2,8 +2,8 @@
 #include <dbg_log.h>
 #include <tcpip_adapter.h>
 
-long wfh_conn_last_check = millis();
-long wfh_last_recon = millis();
+static long wfh_conn_last_check = millis();
+static long wfh_last_recon = millis();
 
 void wfh_dbg_sta_conn_info()
 {

@@ -1,7 +1,7 @@
 #include <variable_store.h>
 
 // Create store with default values
-VariableStore vars_store = {
+static VariableStore vars_store = {
   VARS_DEF_FRAME_DUR,
   VARS_DEF_NUM_FRAMES,
   VARS_DEF_BRIGHTNESS,
@@ -29,9 +29,13 @@ void vars_dbg_store()
 
 void vars_patch_from_json_file()
 {
-  // Read the file into a buffer
-  File f = sdh_open_vars_file("r");
-  dbg_log("available=%d\n", f.available());
+  // Open file on SD card
+  File f;
+  if (!sdh_open_vars_file("r", &f)) {
+    dbg_log("Could not open vars file for variable store patching!\n");
+    return;
+  }
+
   size_t f_sz = f.size();
   char contents[f_sz];
   for (int i = 0; i < f_sz; i++)
@@ -68,8 +72,12 @@ void vars_patch_from_json_file()
 
 void vars_write_to_json_file()
 {
-  // Open file for write access, create document
-  File f = sdh_open_vars_file("w");
+  // Open file on SD card
+  File f;
+  if (!sdh_open_vars_file("w", &f)) {
+    dbg_log("Could not open vars file for variable store writing!\n");
+    return;
+  }
 
   DynamicJsonDocument json_doc(VARS_JSON_WRITEBUF_CAPA);
 
