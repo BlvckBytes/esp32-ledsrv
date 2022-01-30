@@ -76,6 +76,8 @@ Known resultcodes:
 * `0x0A` Fragmented requests are not supported
 * `0x0B` Message longer than internal buffer
 * `0x0C` Unknown opcode requested
+* `0x0D` String argument too long
+* `0x0E` Too many string arguments
 
 Known opcodes:
 
