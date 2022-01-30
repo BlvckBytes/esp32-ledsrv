@@ -8,6 +8,7 @@
 #include <comm_resultcode.h>
 #include <dbg_log.h>
 #include <sd_handler.h>
+#include <variable_store.h>
 
 // Websocket config
 #define WSOCKH_PATH "/ws"

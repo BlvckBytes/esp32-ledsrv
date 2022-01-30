@@ -12,26 +12,26 @@ static uint8_t wsockh_request_remainder_pointer = 0;
  * 
  * @param client Recipient of the message
  * @param code Result code to append as head
- * @param args Argument bytes
- * @param num_args Number of arguments
+ * @param bytes Argument bytes
+ * @param num_bytes Number of bytes to send
  */
 void wsockh_send_resp(
   AsyncWebSocketClient *client,
   CommResultCode code,
-  uint8_t *args = NULL,
-  int num_args = 0
+  uint8_t *bytes = NULL,
+  int num_bytes = 0
 )
 {
   // Create buffer with first element being the code
-  uint8_t buf[num_args + 1] = {};
+  uint8_t buf[num_bytes + 1] = {};
   buf[0] = code;
 
   // Copy over args into buffer
-  if (num_args != 0)
-    memcpy(&buf[1], args, num_args);
+  if (num_bytes != 0)
+    memcpy(&buf[1], bytes, num_bytes);
 
   // Send opcode with args
-  client->binary(buf, num_args + 1);
+  client->binary(buf, num_bytes + 1);
 }
 
 /**
@@ -70,6 +70,13 @@ bool wsockh_read_arg_16t(
   return true;
 }
 
+/**
+ * @brief Send a numeric argument of variable size to the client
+ * 
+ * @param client Client to send argument to
+ * @param value Numeric value
+ * @param num_bytes How many bytes to mask out and send
+ */
 void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8_t num_bytes)
 {
   uint8_t data_buf[num_bytes];
@@ -86,6 +93,40 @@ void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8
 
   // Send data with proper resultcode
   wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, num_bytes);
+}
+
+/**
+ * @brief Send strings as an answer to the client
+ * 
+ * @param client Client to send strings to
+ * @param strings Strings to send
+ * @param num_strings Number of strings in total
+ */
+void wsockh_send_strings(AsyncWebSocketClient *client, const char **strings, size_t num_strings)
+{
+  // Figure out total buffer length, including <NULL> chars
+  size_t total_length = 0;
+  for (int i = 0; i < num_strings; i++)
+    total_length += strlen(strings[i]) + 1;
+
+  // Data buffer
+  uint8_t data_buf[total_length];
+  size_t data_buf_pointer = 0;
+
+  // Iterate strings
+  for (int i = 0; i < num_strings; i++) {
+    const char *curr_str = strings[i];
+
+    // Iterate chars of string
+    for (int j = 0; j < strlen(curr_str); j++)
+      data_buf[data_buf_pointer++] = curr_str[j];
+
+    // Add null terminator
+    data_buf[data_buf_pointer++] = 0;
+  }
+
+  // Send data with proper resultcode
+  wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, total_length);
 }
 
 /**
@@ -145,11 +186,15 @@ bool wsockh_handle_single_packet_req(
       wsockh_send_arg_numeric(client, lfh_get_brightness(), 2);
       return true;
 
+    case GET_WIFI_SSID:
+      wsockh_send_strings(client, &(vars_get()->wifi_ssid), 1);
+      return true;
+
     case GET_SD_SIZE:
       wsockh_send_arg_numeric(client, sdh_get_total_size_mb(), 4);
       return true;
 
-    // Not handleable in one frame
+    // Not handleable with one request-frame
     default:
       return false;
   }
