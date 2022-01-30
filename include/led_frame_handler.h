@@ -9,7 +9,7 @@ void lfh_set_num_frames(uint16_t num_frames);
 
 void lfh_set_brightness(uint8_t brightness);
 
-void lfh_set_wifi_credentials(char* ssid, char* password);
+void lfh_set_wifi_credentials(const char* ssid, const char* password);
 
 uint16_t lfh_get_frame_duration();
 

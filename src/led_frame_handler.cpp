@@ -31,7 +31,7 @@ void lfh_set_wifi_credentials(const char* ssid, const char* password)
   vars_get()->wifi_ssid = ssid;
   vars_get()->wifi_pass = password;
   vars_write_to_json_file();
-  dbg_log("Set wifi credentials to (%s, %s)!\n", ssid, password);
+  dbg_log("Set wifi credentials to (\"%s\", \"%s\")!\n", ssid, password);
 }
 
 uint16_t lfh_get_frame_duration()

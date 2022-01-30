@@ -13,6 +13,9 @@
 // Websocket config
 #define WSOCKH_PATH "/ws"
 #define WSOCKH_REQUEST_REMAINDERS_LEN 8
+#define WSOCKH_MSGBUF_SIZE 4096
+#define WSOCKH_STRARGBUF_SIZE 8
+#define WSOCKH_STRARGVALBUF_SIZE 128
 
 /**
  * @brief Used to save the remaining bytes of a early terminated request

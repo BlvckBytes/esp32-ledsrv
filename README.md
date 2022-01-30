@@ -14,8 +14,8 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [x] Open AP when STA connect failed multiple times in a row (but keep on trying)
 - [X] Binary WebSocket server
 - [X] Request handler switching on OpCodes
-- [-] Serving write requests (missing strings)
-- [-] Serving read requests (missing strings)
+- [X] Serving write requests
+- [X] Serving read requests
 - [ ] Central event system
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
@@ -28,6 +28,10 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Protect against MITM
 
 ... and many more.
+
+## ToDo
+
+- [ ] Structure large files into sections using block comments
 
 ## Documentation
 
@@ -69,6 +73,9 @@ Known resultcodes:
 * `0x07` String not terminated
 * `0x08` Empty request
 * `0x09` Could not access SD card
+* `0x0A` Fragmented requests are not supported
+* `0x0B` Message longer than internal buffer
+* `0x0C` Unknown opcode requested
 
 Known opcodes:
 

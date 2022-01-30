@@ -71,6 +71,90 @@ bool wsockh_read_arg_16t(
 }
 
 /**
+ * @brief Read a number of zero terminated strings from data into the out buffer
+ * 
+ * @param client Client to send arg mismatch errors to
+ * @param offset Offset from the beginning of data, without the OpCode
+ * @param data Data to read from
+ * @param data_len Length of data provided
+ * @param num_strings Number of strings to read
+ * @param out Output buffer
+ * 
+ * @return true Successfully parsed, strings are now in buffer
+ * @return false Could not parse, buffer is undefined
+ */
+bool wsockh_read_strings(
+  AsyncWebSocketClient *client,
+  uint16_t offset,
+  uint8_t *data,
+  size_t data_len,
+  size_t num_strings,
+  char out[WSOCKH_STRARGBUF_SIZE][WSOCKH_STRARGVALBUF_SIZE]
+)
+{
+  // Cannot be less than offset + opcode + at least one char + <NULL>
+  if (data_len < offset + 1 + 1 + 1)
+  {
+    wsockh_send_resp(client, ERR_ARGS_MISMATCH);
+    return false;
+  }
+
+  // Trying to read more string args than the buffer can hold
+  if (num_strings > WSOCKH_STRARGBUF_SIZE)
+  {
+    dbg_log("Could not read strings from request, num_strings exceeded buffer size!\n");
+    wsockh_send_resp(client, ERR_TOO_MANY_STRARGS);
+    return false;
+  }
+
+  uint16_t curr_offs = offset + 1;
+  uint8_t strings_found = 0;
+  for (size_t i = 0; i < num_strings; i++)
+  {
+    // Collect until <NULL>
+    for (size_t j = curr_offs; j < data_len; j++)
+    {
+      // String argument too long
+      if (j - curr_offs == WSOCKH_STRARGVALBUF_SIZE)
+      {
+        dbg_log("String argument too long!\n");
+        wsockh_send_resp(client, ERR_STR_TOO_LONG);
+        return false;
+      }
+
+      out[i][j - curr_offs] = data[j];
+
+      // String terminated
+      if (data[j] == 0)
+      {
+        curr_offs = j + 1;
+        strings_found++;
+        break;
+      }
+
+      // Unterminated string encountered
+      else if (j == data_len - 1)
+      {
+        dbg_log("Unterminated string encountered at index=%" PRIu32 " of message!\n", j);
+        wsockh_send_resp(client, ERR_STRING_UNTERMINATED);
+        return false;
+      }
+    }
+  }
+
+  // Not enough strings provided as args
+  if (strings_found != num_strings)
+  {
+    dbg_log("Not enough string args found!\n");
+    wsockh_send_resp(client, ERR_ARGS_MISMATCH);
+    return false;
+  }
+
+  // Enough terminated strings found and written into out buffer
+  return true;
+}
+
+/**
  * @brief Send a numeric argument of variable size to the client
  * 
  * @param client Client to send argument to
@@ -82,14 +166,11 @@ void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8
   uint8_t data_buf[num_bytes];
 
   // Mask out individual bytes
-  dbg_log("Sending out numeric arg to %" PRIu32 ": ", client->id());
   for (uint8_t i = 0; i < num_bytes; i++)
   {
     uint8_t curr_val = (value >> (i * 8)) & 0xFF;
     data_buf[num_bytes - 1 - i] = curr_val;
-    dbg_log("0x%02x ", curr_val);
   }
-  dbg_log("(reversed)\n");
 
   // Send data with proper resultcode
   wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, num_bytes);
@@ -130,7 +211,45 @@ void wsockh_send_strings(AsyncWebSocketClient *client, const char **strings, siz
 }
 
 /**
+ * @brief Try to handle opcodes which bring data spanning accross multiple
+ * packets that has been collected beforehand
+ * 
+ * @param client Request issuer
+ * @param data Packet data
+ * @param len Packet data length
+ * 
+ * @return true Request could be handled
+ * @return false Request unknown
+ */
+bool wsockh_handle_multi_packet_req(
+  AsyncWebSocketClient *client,
+  uint8_t *data,
+  size_t len
+)
+{
+  // String argument buffer
+  static char strarg_buf[WSOCKH_STRARGBUF_SIZE][WSOCKH_STRARGVALBUF_SIZE] = { { 0 } };
+
+  switch (data[0])
+  {
+    case SET_WIFI_CRED:
+      if (!wsockh_read_strings(client, 0, data, len, 2, strarg_buf)) return true;
+      lfh_set_wifi_credentials(strarg_buf[0], strarg_buf[1]);
+      wsockh_send_resp(client, SUCCESS_NO_DATA);
+      return true;
+  
+    default:
+      return false;
+  }
+}
+
+/**
  * @brief Try to handle opcodes that are single-packeted (small data)
+ * 
+ * @param client Request issuer
+ * @param info Frame information
+ * @param data Packet data
+ * @param len Packet data length
  * 
  * @return true Request could be handled
  * @return false Request is larger and needs further attention
@@ -238,7 +357,6 @@ bool wsockh_is_request_terminated(AsyncWebSocketClient *client, size_t read_len)
  * @param info Frame info to calculate remaining size
  * @param read_len Length of current packet
  */
-// WARNING: This is quite complicated and needs extensive testing!
 void wsockh_terminate_request(AsyncWebSocketClient *client, AwsFrameInfo *info, size_t read_len)
 {
   uint64_t remainder = info->len - read_len;
@@ -270,6 +388,8 @@ void wsockh_handle_data(
   size_t len
 )
 {
+  static uint8_t msg_buf[WSOCKH_MSGBUF_SIZE];
+
   // Never accept non-binary data
   if (info->opcode != WS_BINARY)
   {
@@ -288,19 +408,54 @@ void wsockh_handle_data(
   if (wsockh_is_request_terminated(client, len))
     return;
 
-  // OpCode always is represented by the first byte
-  uint8_t opcode = data[0];
-
   // Handle single frame requests
   if (wsockh_handle_single_packet_req(client, info, data, len)) {
-    dbg_log("Single frame request opcode=%#04X handled!\n", opcode);
+    dbg_log("Single frame request opcode=%#04X handled!\n", data[0]);
 
     // Don't process this request any further, if it has any trailing data
     wsockh_terminate_request(client, info, len);
     return;
   }
 
-  dbg_log("Non single packet request encountered, not yet implemented!\n");
+  // Don't support fragmented messages
+  if (!info->final)
+  {
+    dbg_log("Encountered unsupported fragmented request!\n");
+    wsockh_send_resp(client, ERR_FRAG_REQ);
+
+    // Don't process this request any further, if it has any trailing data
+    wsockh_terminate_request(client, info, len);
+    return;
+  }
+
+  // Message longer than internal buffer
+  if (info->len > WSOCKH_MSGBUF_SIZE)
+  {
+    dbg_log("Encountered message exceeding internal buffer length!\n");
+    wsockh_send_resp(client, ERR_REQ_TOO_LONG);
+
+    // Don't process this request any further, if it has any trailing data
+    wsockh_terminate_request(client, info, len);
+    return;
+  }
+
+  // Collect packets into buffer
+  memcpy(&msg_buf[info->index], data, len);
+
+  // Continue to collect until last packet
+  if (info->index + len != info->len)
+    return;
+
+  // Try to handle this big request now
+  if (!wsockh_handle_multi_packet_req(client, msg_buf, info->len))
+  {
+    dbg_log("Received unknown opcode request!\n");
+    wsockh_send_resp(client, ERR_UNKNOWN_OPCODE);
+
+    // Don't process this request any further, if it has any trailing data
+    wsockh_terminate_request(client, info, len);
+    return;
+  }
 }
 
 void wsockh_ev_handler(
