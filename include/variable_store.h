@@ -11,8 +11,8 @@
 #define VARS_DEF_FRAME_DUR 10
 #define VARS_DEF_NUM_FRAMES 1
 #define VARS_DEF_BRIGHTNESS 255
-#define VARS_DEF_WIFI_SSID ""
-#define VARS_DEF_WIFI_PASS ""
+#define VARS_DEF_WIFI_SSID "YourSSID"
+#define VARS_DEF_WIFI_PASS "YourPassword"
 
 // JSON write buffer capacity
 #define VARS_JSON_WRITEBUF_CAPA 256

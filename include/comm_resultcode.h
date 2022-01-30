@@ -14,7 +14,8 @@ typedef enum {
   ERR_INVAL_PIXEL_CLR = 0x5,
   ERR_INVAL_BRIGHTNESS = 0x6,
   ERR_STRING_UNTERMINATED = 0x7,
-  ERR_REQ_EMPTY = 0x8
+  ERR_REQ_EMPTY = 0x8,
+  ERR_NO_SD_ACC = 0x9
 } CommResultCode;
 
 #endif

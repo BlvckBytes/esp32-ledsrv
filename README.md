@@ -41,7 +41,9 @@ Responses are made up similarly:
 
 `<8b resultcode><optional result data>`
 
-Frame indices, frame durations and string lengths are always represented by two bytes, for future proofness. As of now, all other data is byte-based.
+Frame indices, frame durations and string lengths are always represented by two bytes, for future proofness SD card MBs are four bytes.
+
+As of now, all other data is byte-based.
 
 Events send data to the client if their channel has been subscribed beforehand.
 
@@ -110,7 +112,7 @@ Known opcodes:
   * Res: `<0xFF>(<0x00-0xFF>)*ssid_strlen`
 * `0x86` Get SD card total size in MB
   * Fmt: `<0x86>`
-  * Res: `<0xFF><total_size uint16_t>` | `0x09`
+  * Res: `<0xFF><total_size uint32_t>` | `0x09`
 
 ### Event Structure
 

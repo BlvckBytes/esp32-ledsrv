@@ -19,6 +19,9 @@
 // Reserved size for variables file
 #define SDH_FILESZ_VARS 1048576 // 1MB
 
+// Conversion utility
+#define sdh_bytes_to_mb(bytes) (bytes / 1000 / 1000)
+
 /**
  * @brief Initialize the SD card slot
  * 
@@ -39,6 +42,13 @@ bool sdh_io_available();
  * @brief Watches for hotplug events and updates the system accordingly
  */
 void sdh_watch_hotplug();
+
+/**
+ * @brief Get the total size of the currently in-use SD card in megabytes
+ * 
+ * @return uint8_t Size in megabytes
+ */
+uint32_t sdh_get_total_size_mb();
 
 /**
  * @brief Open the frames file

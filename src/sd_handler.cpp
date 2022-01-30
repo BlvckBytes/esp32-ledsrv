@@ -52,6 +52,12 @@ void sdh_watch_hotplug()
   sdh_avail = true;
 }
 
+uint32_t sdh_get_total_size_mb()
+{
+  if (!sdh_avail) return 0;
+  return sdh_bytes_to_mb(SD.totalBytes());
+}
+
 bool sdh_open_create_if_not_exists(
   const char* path,
   const char* mode,

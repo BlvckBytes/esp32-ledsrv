@@ -70,24 +70,22 @@ bool wsockh_read_arg_16t(
   return true;
 }
 
-/**
- * @brief Send a 16 bit argument as the response to the client
- * 
- * @param client Recipient of message
- * @param value 16 bit value to send
- */
-void wsockh_send_arg_16t(AsyncWebSocketClient *client, uint16_t value)
+void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8_t num_bytes)
 {
-  uint8_t data_buf[2] = { 0 };
+  uint8_t data_buf[num_bytes];
 
-  // msB
-  data_buf[0] = (value >> 8) & 0xFF;
+  // Mask out individual bytes
+  dbg_log("Sending out numeric arg to %" PRIu32 ": ", client->id());
+  for (uint8_t i = 0; i < num_bytes; i++)
+  {
+    uint8_t curr_val = (value >> (i * 8)) & 0xFF;
+    data_buf[num_bytes - 1 - i] = curr_val;
+    dbg_log("0x%02x ", curr_val);
+  }
+  dbg_log("(reversed)\n");
 
-  // lsB
-  data_buf[1] = value & 0xFF;
-
-  // Send buffer to client
-  wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, 2);
+  // Send data with proper resultcode
+  wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, num_bytes);
 }
 
 /**
@@ -132,19 +130,23 @@ bool wsockh_handle_single_packet_req(
       return true;
 
     case GET_FRAME_DUR:
-      wsockh_send_arg_16t(client, lfh_get_frame_duration());
+      wsockh_send_arg_numeric(client, lfh_get_frame_duration(), 2);
       return true;
 
     case GET_NUM_FRAMES:
-      wsockh_send_arg_16t(client, lfh_get_num_frames());
+      wsockh_send_arg_numeric(client, lfh_get_num_frames(), 2);
       return true;
 
     case GET_FRAME_SLOTS:
-      wsockh_send_arg_16t(client, lfh_get_frame_slots());
+      wsockh_send_arg_numeric(client, lfh_get_frame_slots(), 2);
       return true;
 
     case GET_BRIGHTNESS:
-      wsockh_send_arg_16t(client, lfh_get_brightness());
+      wsockh_send_arg_numeric(client, lfh_get_brightness(), 2);
+      return true;
+
+    case GET_SD_SIZE:
+      wsockh_send_arg_numeric(client, sdh_get_total_size_mb(), 4);
       return true;
 
     // Not handleable in one frame
