@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <wifi_handler.h>
+#include <reboot_handler.h>
 #include <web_server_handler.h>
 #include <web_socket_handler.h>
 #include <sd_handler.h>
@@ -51,6 +52,9 @@ void loop()
   // {
   //   // INFO: Put wifi critical calls here
   // }
+
+  // Check for reboot requests
+  rbh_check_requests();
 
   // Clean up web socket server
   wsockh_cleanup();

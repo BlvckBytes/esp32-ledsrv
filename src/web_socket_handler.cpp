@@ -406,6 +406,12 @@ bool wsockh_handle_single_packet_req(
       wsockh_send_strings(client, &str_arg_buf, 1);
       return true;
 
+    case REBOOT:
+      wsockh_send_resp(client, SUCCESS_NO_DATA);
+      dbg_log("Restarting device in %dms!\n", WSOCKH_REB_DEL);
+      rbh_request_schedule(WSOCKH_REB_DEL );
+      return true;
+
     // Not handleable with one request-frame
     default:
       return false;

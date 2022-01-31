@@ -21,7 +21,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
-- [ ] Add reboot opcode
+- [X] Add reboot opcode
 - [ ] Add SSID pattern validation
 - [X] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
@@ -120,6 +120,9 @@ Known opcodes:
 * `0x86` Get SD card total size in MB
   * Fmt: `<0x86>`
   * Res: `<0xFF><total_size uint32_t>` | `0x09`
+* `0xFF` Reboot device
+  * Fmt: `<0xFF>`
+  * Res: `<0xFF>`
 
 ### Event Structure
 

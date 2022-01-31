@@ -16,6 +16,7 @@
 #include <dbg_log.h>
 #include <sd_handler.h>
 #include <variable_store.h>
+#include <reboot_handler.h>
 
 /*
 ============================================================================
@@ -28,6 +29,9 @@
 #define WSOCKH_REQUEST_REMAINDERS_LEN 8
 #define WSOCKH_MSGBUF_SIZE 4096
 #define WSOCKH_STRARGBUF_SIZE 8
+
+// Reboot opcode
+#define WSOCKH_REB_DEL 5000
 
 /*
 ============================================================================

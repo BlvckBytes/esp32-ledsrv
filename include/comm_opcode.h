@@ -18,7 +18,9 @@ typedef enum {
   GET_BRIGHTNESS = 0x84,   //       y          R    /
   GET_WIFI_SSID = 0x85,    //       y          R    /
   GET_SD_SIZE = 0x86,      //       y          R    /
-  GET_DEV_NAME = 0x87      //       y          R    /
+  GET_DEV_NAME = 0x87,     //       y          R    /
+
+  REBOOT = 0xFF,           //       y          /    /
 } CommOpCode;
 
 #endif
