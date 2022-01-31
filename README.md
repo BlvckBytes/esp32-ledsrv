@@ -16,22 +16,20 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] Request handler switching on OpCodes
 - [X] Serving write requests
 - [X] Serving read requests
+- [X] Add hostname as a store variable
 - [ ] Central event system
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
+- [ ] Add reboot opcode
+- [ ] Add SSID pattern validation
 - [X] SD card hotplug
-- [ ] SD card handle wrong FS
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
 - [X] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
 - [ ] Protect against MITM
 
 ... and many more.
-
-## ToDo
-
-- [ ] Structure large files into sections using block comments
 
 ## Documentation
 

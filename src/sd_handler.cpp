@@ -1,7 +1,12 @@
 #include <sd_handler.h>
 
+/*
+============================================================================
+                              Basic SD control                              
+============================================================================
+*/
+
 static bool sdh_avail = false;
-static long sdh_last_hotplug_watch = millis();
 
 bool sdh_init()
 {
@@ -17,10 +22,30 @@ bool sdh_init()
   return sdh_avail;
 }
 
+/*
+============================================================================
+                               SD information                               
+============================================================================
+*/
+
 bool sdh_io_available()
 {
   return sdh_avail;
 }
+
+uint32_t sdh_get_total_size_mb()
+{
+  if (!sdh_avail) return 0;
+  return sdh_bytes_to_mb(SD.totalBytes());
+}
+
+/*
+============================================================================
+                            Hotplug capabilities                            
+============================================================================
+*/
+
+static long sdh_last_hotplug_watch = millis();
 
 void sdh_watch_hotplug()
 {
@@ -34,11 +59,10 @@ void sdh_watch_hotplug()
     if (!sdh_init()) return;
 
   // CMD SEND_STATUS = 13, responds with R2 (2 bytes)
-  // WARNING: This took two patches:
+  // WARNING: This took a patch:
   // WARNING: * Add sdCommand to sd_diskio.h
-  // WARNING: * Make _pdrv public inside SD.h
   uint32_t resp = UINT32_MAX;
-  sdCommand(SD._pdrv, 13, 0, &resp);
+  sdCommand(SDH_PDRV, 13, 0, &resp);
 
   // Couldn't answer, thus not available
   if (resp == UINT32_MAX)
@@ -52,11 +76,11 @@ void sdh_watch_hotplug()
   sdh_avail = true;
 }
 
-uint32_t sdh_get_total_size_mb()
-{
-  if (!sdh_avail) return 0;
-  return sdh_bytes_to_mb(SD.totalBytes());
-}
+/*
+============================================================================
+                                File handles                                
+============================================================================
+*/
 
 bool sdh_open_create_if_not_exists(
   const char* path,

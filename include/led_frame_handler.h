@@ -1,24 +1,30 @@
 #ifndef led_frame_handler_h
 #define led_frame_handler_h
 
+/*
+============================================================================
+                                  Includes                                  
+============================================================================
+*/
+
 #include <inttypes.h>
+#include <dbg_log.h>
 
-void lfh_set_frame_duration(uint16_t duration);
+/*
+============================================================================
+                                  Macros                                    
+============================================================================
+*/
 
-void lfh_set_num_frames(uint16_t num_frames);
+// WARNING: This value needs to be calculated at runtime depending on the SD remaining size, clamped to a max of uint16_t
+#define MAX_FRAMES 180
 
-void lfh_set_brightness(uint8_t brightness);
-
-void lfh_set_wifi_credentials(const char* ssid, const char* password);
-
-uint16_t lfh_get_frame_duration();
-
-uint16_t lfh_get_num_frames();
+/*
+============================================================================
+                             Framebuffer info                               
+============================================================================
+*/
 
 uint16_t lfh_get_frame_slots();
-
-uint8_t lfh_get_brightness();
-
-const char* lfh_get_wifi_ssid();
 
 #endif

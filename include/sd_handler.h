@@ -1,15 +1,31 @@
 #ifndef sd_handler_h
 #define sd_handler_h
 
+/*
+============================================================================
+                                  Includes                                  
+============================================================================
+*/
+
 #include <dbg_log.h>
 #include <sd_diskio.h>
 #include <inttypes.h>
 #include <SPI.h>
 #include <SD.h>
 
+/*
+============================================================================
+                                  Macros                                    
+============================================================================
+*/
+
 // SD card hardware config
 #define SDH_PIN_CS 5
 #define SDH_HOTPLUG_WATCH_DEL 500
+
+// Drive ID, 0 should be totally fine as there never
+// will be multiple SD cards in this system
+#define SDH_PDRV 0
 
 // SD card file config
 #define SDH_FILEPREF "esp32_ledsrv_"
@@ -22,6 +38,12 @@
 // Conversion utility
 #define sdh_bytes_to_mb(bytes) (bytes / 1000 / 1000)
 
+/*
+============================================================================
+                              Basic SD control                              
+============================================================================
+*/
+
 /**
  * @brief Initialize the SD card slot
  * 
@@ -29,6 +51,12 @@
  * @return false No SD card found
  */
 bool sdh_init();
+
+/*
+============================================================================
+                               SD information                               
+============================================================================
+*/
 
 /**
  * @brief Checks whether or not card I/O is available (connected and inited)
@@ -39,16 +67,28 @@ bool sdh_init();
 bool sdh_io_available();
 
 /**
- * @brief Watches for hotplug events and updates the system accordingly
- */
-void sdh_watch_hotplug();
-
-/**
  * @brief Get the total size of the currently in-use SD card in megabytes
  * 
  * @return uint8_t Size in megabytes
  */
 uint32_t sdh_get_total_size_mb();
+
+/*
+============================================================================
+                            Hotplug capabilities                            
+============================================================================
+*/
+
+/**
+ * @brief Watches for hotplug events and updates the system accordingly
+ */
+void sdh_watch_hotplug();
+
+/*
+============================================================================
+                                File handles                                
+============================================================================
+*/
 
 /**
  * @brief Open the frames file
