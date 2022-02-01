@@ -10,6 +10,7 @@
 #include <dbg_log.h>
 #include <sd_diskio.h>
 #include <inttypes.h>
+#include <event_handler.h>
 #include <SPI.h>
 #include <SD.h>
 

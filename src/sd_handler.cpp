@@ -8,15 +8,30 @@
 
 static bool sdh_avail = false;
 
+/**
+ * @brief Setter interceptor for sdh_avail
+ * 
+ * @param state State to set the variable to
+ */
+void sdh_set_avail(bool state)
+{
+  bool prev = sdh_avail;
+  sdh_avail = state;
+
+  // Only fire event on delta
+  if (prev != state)
+    evh_fire_event(0, SD_CARD_STATE);
+}
+
 bool sdh_init()
 {
   // Begin SD library using known pin layout
   if (SD.begin(SDH_PIN_CS)) {
     dbg_log("SD card slot initialized (type=%" PRIu8 ")!\n", SD.cardType());
-    sdh_avail = true;
+    sdh_set_avail(true);
   } else {
     dbg_log("Could not initialize SD card slot!\n");
-    sdh_avail = false;
+    sdh_set_avail(false);
   }
 
   return sdh_avail;
@@ -67,13 +82,13 @@ void sdh_watch_hotplug()
   // Couldn't answer, thus not available
   if (resp == UINT32_MAX)
   {
-    sdh_avail = false;
+    sdh_set_avail(false);
     SD.end();
     dbg_log("De-inited SD!\n");
     return;
   }
 
-  sdh_avail = true;
+  sdh_set_avail(true);
 }
 
 /*

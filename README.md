@@ -18,7 +18,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] Serving read requests
 - [X] Add hostname as a store variable
 - [X] Add num_pixels as a store variable
-- [ ] Central event system
+- [X] Central event system
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
@@ -30,7 +30,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [ ] Client authentication
 - [ ] Protect against MITM
 
-... and many more.
+... and maybe some more.
 
 ## Documentation
 
@@ -58,9 +58,12 @@ Known eventcodes:
 * `0x03` Total brightness changed
 * `0x04` WiFi credentials changed
 * `0x05` SD card availability changed
+* `0x06` Device name changed
+* `0x07` Number of pixels changed
 
 Known resultcodes:
 
+* `0xFE` Subscribed event fired
 * `0xFF` Success, data is the following bytes
 * `0x00` Success, no data
 * `0x01` Text message received
@@ -77,6 +80,8 @@ Known resultcodes:
 * `0x0C` Unknown opcode requested
 * `0x0D` String argument too long
 * `0x0E` Too many string arguments
+* `0x0F` Event subscriber buffer full
+* `0x10` Unknown event requested
 
 Known opcodes:
 
@@ -95,11 +100,17 @@ Known opcodes:
   * Fmt: `<0x03><brightness uint8_t>`
   * Res: `0x00` | `0x01` | `0x02`| `0x06`
 * `0x04` Set WiFi credentials
-  * Fmt: `<0x04>(<0x00-0xFF>)*ssid_strlen(<0x00-0xFF>)*pass_strlen`
-  * Res: `0x00` | `0x01` | `0x02` | `0x07`
+  * Fmt: `<0x04>(<0x00-0xFF>)*ssid_strlen<0x00>(<0x00-0xFF>)*pass_strlen<0x00>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x07` | `0x0D`
 * `0x05` Set event subscription state
   * Fmt: `<0x05><eventcode uint8_t><state_bool uint8_t>`
-  * Res: `0x00` | `0x01` | `0x02` | `0x08`
+  * Res: `0x00` | `0x01` | `0x02` | `0x08` | `0x0F` | `0x10`
+* `0x06` Set device name
+  * Fmt: `<0x06>(<0x00-0xFF>)*dev_name_strlen<0x00>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x07` | `0x0D`
+* `0x07` Set total number of pixels
+  * Fmt: `<0x07><num_pixels uint_16t>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x04`
 * `0x80` Get frame duration in ms
   * Fmt: `<0x80>`
   * Res: `<0xFF><0x0000-0xFFFF>`
@@ -117,10 +128,16 @@ Known opcodes:
   * Res: `<0xFF><0x00-0xFF>`
 * `0x85` Get current SSID
   * Fmt: `<0x85>`
-  * Res: `<0xFF>(<0x00-0xFF>)*ssid_strlen`
+  * Res: `<0xFF>(<0x00-0xFF>)*ssid_strlen<0x00>`
 * `0x86` Get SD card total size in MB
   * Fmt: `<0x86>`
   * Res: `<0xFF><total_size uint32_t>` | `0x09`
+* `0x87` Get device name
+  * Fmt: `<0x87>`
+  * Res: `<0xFF>(<0x00-0xFF>)*dev_name_strlen<0x00>`
+* `0x88` Get number of pixels
+  * Fmt: `<0x88>`
+  * Res: `<0xFF><0x0000-0xFFFF>`
 * `0xFF` Reboot device
   * Fmt: `<0xFF>`
   * Res: `<0xFF>`
@@ -129,4 +146,4 @@ Known opcodes:
 
 Events are the only way the server can communicate with it's clients. Packets are formatted in this manner:
 
-`<8b eventcode><optional event data>`
+`<0x0F><8b eventcode><optional event data>`

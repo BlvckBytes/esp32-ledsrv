@@ -17,6 +17,7 @@
 #include <sd_handler.h>
 #include <variable_store.h>
 #include <reboot_handler.h>
+#include <event_handler.h>
 
 /*
 ============================================================================

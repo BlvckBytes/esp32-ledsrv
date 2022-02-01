@@ -105,20 +105,33 @@ void wsockh_send_resp(
  * @param client Client to send argument to
  * @param value Numeric value
  * @param num_bytes How many bytes to mask out and send
+ * @param result_code Result code to add as first byte
+ * @param prefix Pointer to a prefixing byte that gets inserted
+ * after result_code, null if not needed
  */
-void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8_t num_bytes)
+void wsockh_send_arg_numeric(
+  AsyncWebSocketClient *client,
+  uint64_t value,
+  uint8_t num_bytes,
+  CommResultCode result_code = SUCCESS_DATA_FOLLOWS,
+  uint8_t *prefix = 0
+)
 {
-  uint8_t data_buf[num_bytes];
+  uint8_t pref_offs = prefix == 0 ? 0 : 1;
+  uint8_t data_buf[num_bytes + pref_offs];
+
+  // Append prefix if applicable
+  if (prefix) data_buf[0] = *prefix;
 
   // Mask out individual bytes
-  for (uint8_t i = 0; i < num_bytes; i++)
+  for (uint8_t i = 0; i < sizeof(data_buf); i++)
   {
     uint8_t curr_val = (value >> (i * 8)) & 0xFF;
-    data_buf[num_bytes - 1 - i] = curr_val;
+    data_buf[sizeof(data_buf) - 1 - i] = curr_val;
   }
 
   // Send data with proper resultcode
-  wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, num_bytes);
+  wsockh_send_resp(client, result_code, data_buf, sizeof(data_buf));
 }
 
 /**
@@ -127,17 +140,27 @@ void wsockh_send_arg_numeric(AsyncWebSocketClient *client, uint64_t value, uint8
  * @param client Client to send strings to
  * @param strings Strings to send
  * @param num_strings Number of strings in total
+ * @param result_code Result code to add as first byte
+ * @param prefix Pointer to a prefixing byte that gets inserted
+ * after result_code, null if not needed
  */
-void wsockh_send_strings(AsyncWebSocketClient *client, const char **strings, size_t num_strings)
+void wsockh_send_strings(
+  AsyncWebSocketClient *client,
+  const char **strings,
+  size_t num_strings,
+  CommResultCode result_code = SUCCESS_DATA_FOLLOWS,
+  uint8_t *prefix = 0
+)
 {
   // Figure out total buffer length, including <NULL> chars
+  uint8_t pref_offs = prefix == 0 ? 0 : 1;
   size_t total_length = 0;
   for (int i = 0; i < num_strings; i++)
     total_length += strlen(strings[i]) + 1;
 
   // Data buffer
-  uint8_t data_buf[total_length];
-  size_t data_buf_pointer = 0;
+  uint8_t data_buf[total_length + pref_offs];
+  size_t data_buf_pointer = pref_offs;
 
   // Iterate strings
   for (int i = 0; i < num_strings; i++) {
@@ -151,8 +174,11 @@ void wsockh_send_strings(AsyncWebSocketClient *client, const char **strings, siz
     data_buf[data_buf_pointer++] = 0;
   }
 
+  // Append prefix if applicable
+  if (prefix) data_buf[0] = *prefix;
+
   // Send data with proper resultcode
-  wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, data_buf, total_length);
+  wsockh_send_resp(client, result_code, data_buf, sizeof(data_buf));
 }
 
 /*
@@ -307,6 +333,8 @@ bool wsockh_handle_multi_packet_req(
   // String argument buffer
   static char strarg_buf[WSOCKH_STRARGBUF_SIZE][VARS_STRVALBUF_SIZE] = { { 0 } };
 
+  uint32_t client_id = client->id();
+
   switch (data[0])
   {
     case SET_WIFI_CRED:
@@ -314,12 +342,14 @@ bool wsockh_handle_multi_packet_req(
       vars_set_wifi_ssid(strarg_buf[0]);
       vars_set_wifi_pass(strarg_buf[1]);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, WIFI_CRED_SET);
       return true;
 
     case SET_DEV_NAME:
       if (!wsockh_read_strings(client, 0, data, len, 1, strarg_buf)) return true;
       vars_set_dev_name(strarg_buf[0]);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, DEV_NAME_SET);
       return true;
   
     default:
@@ -351,22 +381,27 @@ bool wsockh_handle_single_packet_req(
   // Buffer for holding result string arguments from function returns
   const char *str_arg_buf;
 
+  uint32_t client_id = client->id();
+
   switch (data[0])
   {
     case SET_FRAME_DUR:
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
       vars_set_frame_dur(arg_16t_buf);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, FRAME_DUR_SET);
       return true;
 
     case SET_NUM_FRAMES:
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
       vars_set_num_frames(arg_16t_buf);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, NUM_FRAMES_SET);
       return true;
 
     case SET_BRIGHTNESS:
-      if (len <= 1)
+      // <opcode><brightness uint8_t>
+      if (len != 2)
       {
         wsockh_send_resp(client, ERR_ARGS_MISMATCH);
         return true;
@@ -374,11 +409,44 @@ bool wsockh_handle_single_packet_req(
 
       vars_set_brightness(data[1]);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, BRIGHTNESS_SET);
       return true;
 
     case SET_NUM_PIXELS:
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
       vars_set_num_pixels(arg_16t_buf);
+      wsockh_send_resp(client, SUCCESS_NO_DATA);
+      evh_fire_event(&client_id, NUM_PIXELS_SET);
+      return true;
+
+    case SET_EVT_SUB:
+      // <opcode><eventcode uint8_t><state uint8_t>
+      if (len != 3)
+      {
+        wsockh_send_resp(client, ERR_ARGS_MISMATCH);
+        return true;
+      }
+
+      // Create registration if not yet exists
+      if (evh_exists_client(client->id()))
+      {
+        // Cannot add any other listeners!
+        if (!evh_add_client(client->id()))
+        {
+          wsockh_send_resp(client, ERR_EVT_SUBS_BUF_FULL);
+          return true;
+        }
+      }
+      
+      // Check if event code is out of range
+      if (data[1] >= CEV_NUM_EVENTS)
+      {
+        wsockh_send_resp(client, ERR_UNKNOWN_EVT_REQ);
+        return true;
+      }
+
+      // Set subscription status
+      evh_set_subscription(client->id(), (CommEventCode) data[1], data[2] != 0);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       return true;
 
@@ -538,6 +606,9 @@ void wsockh_ev_handler(
 
     case WS_EVT_DISCONNECT:
       dbg_log("Websocket client %u disconnected!\n", client->id());
+
+      // Remove client from event handler, if was registered
+      evh_remove_client(client->id());
       break;
 
     case WS_EVT_ERROR:
@@ -564,8 +635,69 @@ void wsockh_ev_handler(
 ============================================================================
 */
 
+/**
+ * @brief Notify a client of an occurred event
+ * 
+ * @param client_id ID of client
+ * @param event Event that fired
+ */
+void wsockh_notify_client(uint32_t client_id, CommEventCode event)
+{
+  AsyncWebSocketClient *cl = wsockh_ws.client(client_id);
+  const char* str_arg = 0;
+
+  // Client cannot be found, cancel
+  if (cl == NULL)
+  {
+    // Remove invalid entry
+    evh_remove_client(client_id);
+    return;
+  }
+
+  // Local event variable to have a pointer for function calls
+  uint8_t ev = event;
+
+  switch (event)
+  {
+    case FRAME_DUR_SET:
+      wsockh_send_arg_numeric(cl, vars_get_frame_dur(), 2, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case NUM_FRAMES_SET:
+      wsockh_send_arg_numeric(cl, vars_get_num_frames(), 2, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case BRIGHTNESS_SET:
+      wsockh_send_arg_numeric(cl, vars_get_brightness(), 1, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case WIFI_CRED_SET:
+      str_arg = vars_get_wifi_ssid();
+      wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case SD_CARD_STATE:
+      wsockh_send_arg_numeric(cl, sdh_io_available() ? 0x1 : 0x0, 1, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case DEV_NAME_SET:
+      str_arg = vars_get_dev_name();
+      wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    case NUM_PIXELS_SET:
+      wsockh_send_arg_numeric(cl, vars_get_num_pixels(), 2, SUBSCRIBED_EV_FIRED, &ev);
+      break;
+
+    default:
+      dbg_log("Could not set yet unknown event %d!\n", ev);
+      break;
+  }
+}
+
 void wsockh_init()
 {
+  evh_set_notifier(wsockh_notify_client);
   wsockh_ws.onEvent(wsockh_ev_handler);
   wsrvh_register_handler(&wsockh_ws);
 }

@@ -194,40 +194,47 @@ void vars_set_frame_dur(uint16_t v)
 {
   vars_store.frame_dur = v;
   dbg_log("Set frame_dur=%" PRIu16 "!\n", vars_store.frame_dur);
+  vars_write_to_json_file();
 }
 
 void vars_set_num_frames(uint16_t v)
 {
   vars_store.num_frames = v;
   dbg_log("Set num_frames=%" PRIu16 "!\n", vars_store.num_frames);
+  vars_write_to_json_file();
 }
 
 void vars_set_num_pixels(uint16_t v)
 {
   vars_store.num_pixels = v;
   dbg_log("Set num_pixels=%" PRIu16 "!\n", vars_store.num_pixels);
+  vars_write_to_json_file();
 }
 
 void vars_set_brightness(uint16_t v)
 {
   vars_store.brightness = v;
   dbg_log("Set brightness=%" PRIu16 "!\n", vars_store.brightness);
+  vars_write_to_json_file();
 }
 
 void vars_set_wifi_ssid(const char* v)
 {
   strcpy(vars_store.wifi_ssid, v);
   dbg_log("Set wifi_ssid=%s!\n", vars_store.wifi_ssid);
+  vars_write_to_json_file();
 }
 
 void vars_set_wifi_pass(const char* v)
 {
   strcpy(vars_store.wifi_pass, v);
   dbg_log("Set wifi_pass=%s!\n", vars_store.wifi_pass);
+  vars_write_to_json_file();
 }
 
 void vars_set_dev_name(const char* v)
 {
   strcpy(vars_store.dev_name, v);
   dbg_log("Set dev_name=%s!\n", vars_store.dev_name);
+  vars_write_to_json_file();
 }
