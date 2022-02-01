@@ -66,5 +66,5 @@ void loop()
   sdh_watch_hotplug();
 
   // Handle actual frame drawing
-  lfh_handle_frame();
+  // lfh_handle_frame();
 }

@@ -53,13 +53,12 @@ Events send data to the client if their channel has been subscribed beforehand.
 Known eventcodes:
 
 * `0x00` Frame duration changed
-* `0x01` Active number of frames changed
+* `0x01` Number of frames and num_pixels changed
 * `0x02` Frame content deployed
 * `0x03` Total brightness changed
 * `0x04` WiFi credentials changed
 * `0x05` SD card availability changed
 * `0x06` Device name changed
-* `0x07` Number of pixels changed
 
 Known resultcodes:
 
@@ -84,6 +83,7 @@ Known resultcodes:
 * `0x10` Unknown event requested
 * `0x11` Device name invalid
 * `0x12` Too many frames
+* `0x13` Too many pixels
 
 Known opcodes:
 
@@ -92,9 +92,9 @@ Known opcodes:
 * `0x00` Set frame duration in ms
   * Fmt: `<0x00><duration uint_16t>`
   * Res: `0x00` | `0x01` | `0x02`
-* `0x01` Set active number of frames
-  * Fmt: `<0x01><num_frames uint_16t>`
-  * Res: `0x00` | `0x01` | `0x02` | `0x04` | `0x12`
+* `0x01` Set number of frames and num_pixels
+  * Fmt: `<0x01><num_frames uint_16t><num_pixels uint16_t>`
+  * Res: `0x00` | `0x01` | `0x02` | `0x04` | `0x12` | `0x13`
 * `0x02` Set frame content by index in framebuffer
   * Fmt: `<0x02><frame_index uint16_t>(<R uint8_t><G uint8_t><B uint8_t>)*num_pixels`
   * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05` | `0x09`
@@ -110,15 +110,12 @@ Known opcodes:
 * `0x06` Set device name
   * Fmt: `<0x06>(<0x00-0xFF>)*dev_name_strlen<0x00>`
   * Res: `0x00` | `0x01` | `0x02` | `0x07` | `0x0D`
-* `0x07` Set total number of pixels
-  * Fmt: `<0x07><num_pixels uint_16t>`
-  * Res: `0x00` | `0x01` | `0x02` | `0x04`
 * `0x80` Get frame duration in ms
   * Fmt: `<0x80>`
   * Res: `<0xFF><0x0000-0xFFFF>`
-* `0x81` Get active number of frames
+* `0x81` Get active number of frames and num_pixels
   * Fmt: `<0x81>`
-  * Res: `<0xFF><0x0000-0xFFFF>`
+  * Res: `<0xFF><0x0000-0xFFFF><0x0000-0xFFFF>`
 * `0x82` Get available number of frame slots
   * Fmt: `<0x82>`
   * Res: `<0xFF><0x0000-0xFFFF>` | `0x09`
@@ -137,15 +134,12 @@ Known opcodes:
 * `0x87` Get device name
   * Fmt: `<0x87>`
   * Res: `<0xFF>(<0x00-0xFF>)*dev_name_strlen<0x00>`
-* `0x88` Get number of pixels
-  * Fmt: `<0x88>`
-  * Res: `<0xFF><0x0000-0xFFFF>`
 * `0xFF` Reboot device
   * Fmt: `<0xFF>`
   * Res: `<0xFF>`
 
 ### Event Structure
 
-Events are the only way the server can communicate with it's clients. Packets are formatted in this manner:
+Packets are formatted in this manner:
 
 `<0x0F><8b eventcode><optional event data>`

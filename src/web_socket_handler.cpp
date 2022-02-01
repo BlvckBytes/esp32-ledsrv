@@ -423,7 +423,7 @@ bool wsockh_handle_single_packet_req(
 )
 {
   // Buffer for reading 16 bit arguments into
-  static uint16_t arg_16t_buf;
+  static uint16_t arg_16t_buf, arg_16t_buf_2;
 
   // Buffer for holding result string arguments from function returns
   const char *str_arg_buf;
@@ -439,7 +439,8 @@ bool wsockh_handle_single_packet_req(
       evh_fire_event(&client_id, FRAME_DUR_SET);
       return true;
 
-    case SET_NUM_FRAMES:
+    case SET_NUM_FRAMES_NUM_PIXELS:
+      // Read num_frames
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
 
       // Cannot accept more frames than the cap allows
@@ -449,13 +450,24 @@ bool wsockh_handle_single_packet_req(
         return true;
       }
 
+      // Read num_pixels
+      if (!wsockh_read_arg_16t(client, 2, data, len, &arg_16t_buf_2)) return true;
+
+      // More pixels than capable of handling
+      if (arg_16t_buf > lfh_get_max_num_pixels())
+      {
+        wsockh_send_resp(client, ERR_TOO_MANY_PIXELS);
+        return true;
+      }
+
       lfh_deinit();
       vars_set_num_frames(arg_16t_buf);
+      vars_set_num_pixels(arg_16t_buf_2);
       lfh_init_file();
       lfh_init();
 
       wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, NUM_FRAMES_SET);
+      evh_fire_event(&client_id, NUM_FRAMES_NUM_PIXELS_SET);
       return true;
 
     case SET_BRIGHTNESS:
@@ -469,18 +481,6 @@ bool wsockh_handle_single_packet_req(
       vars_set_brightness(data[1]);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       evh_fire_event(&client_id, BRIGHTNESS_SET);
-      return true;
-
-    case SET_NUM_PIXELS:
-      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
-
-      lfh_deinit();
-      vars_set_num_pixels(arg_16t_buf);
-      lfh_init_file();
-      lfh_init();
-
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, NUM_PIXELS_SET);
       return true;
 
     case SET_EVT_SUB:
@@ -518,8 +518,12 @@ bool wsockh_handle_single_packet_req(
       wsockh_send_arg_numeric(client, vars_get_frame_dur(), 2);
       return true;
 
-    case GET_NUM_FRAMES:
-      wsockh_send_arg_numeric(client, vars_get_num_frames(), 2);
+    case GET_NUM_FRAMES_NUM_PIXELS:
+      wsockh_send_arg_numeric(
+        client,
+        (vars_get_num_frames() << 16) | vars_get_num_pixels(),
+        4
+      );
       return true;
 
     case GET_FRAME_SLOTS:
@@ -542,10 +546,6 @@ bool wsockh_handle_single_packet_req(
     case GET_DEV_NAME:
       str_arg_buf = vars_get_dev_name();
       wsockh_send_strings(client, &str_arg_buf, 1);
-      return true;
-
-    case GET_NUM_PIXELS:
-      wsockh_send_arg_numeric(client, vars_get_num_pixels(), 2);
       return true;
 
     case REBOOT:
@@ -727,8 +727,12 @@ void wsockh_notify_client(uint32_t client_id, CommEventCode event)
       wsockh_send_arg_numeric(cl, vars_get_frame_dur(), 2, SUBSCRIBED_EV_FIRED, &ev);
       break;
 
-    case NUM_FRAMES_SET:
-      wsockh_send_arg_numeric(cl, vars_get_num_frames(), 2, SUBSCRIBED_EV_FIRED, &ev);
+    case NUM_FRAMES_NUM_PIXELS_SET:
+      wsockh_send_arg_numeric(cl,
+        ((vars_get_num_frames() << 16) | vars_get_num_pixels()),
+        4,
+        SUBSCRIBED_EV_FIRED, &ev
+      );
       break;
 
     case BRIGHTNESS_SET:
@@ -747,10 +751,6 @@ void wsockh_notify_client(uint32_t client_id, CommEventCode event)
     case DEV_NAME_SET:
       str_arg = vars_get_dev_name();
       wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    case NUM_PIXELS_SET:
-      wsockh_send_arg_numeric(cl, vars_get_num_pixels(), 2, SUBSCRIBED_EV_FIRED, &ev);
       break;
 
     default:

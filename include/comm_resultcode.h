@@ -25,7 +25,8 @@ typedef enum {
   ERR_EVT_SUBS_BUF_FULL = 0x0F,
   ERR_UNKNOWN_EVT_REQ = 0x10,
   ERR_INVAL_DEV_NAME = 0x11,
-  ERR_TOO_MANY_FRAMES = 0x12
+  ERR_TOO_MANY_FRAMES = 0x12,
+  ERR_TOO_MANY_PIXELS = 0x13
 } CommResultCode;
 
 #endif

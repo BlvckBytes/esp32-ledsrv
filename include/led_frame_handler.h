@@ -21,6 +21,7 @@
 
 // WARNING: This value needs to be calculated at runtime depending on the SD remaining size, clamped to a max of uint16_t
 #define MAX_FRAMES 180
+#define MAX_PIXELS 1024
 
 /*
 ============================================================================
@@ -90,6 +91,13 @@ uint16_t lfh_get_num_frames_capped();
  * @return uint16_t Size in bytes
  */
 uint16_t lfh_get_frame_size();
+
+/**
+ * @brief Get the maximum number of possible pixels to be handled
+ * 
+ * @return uint16_t Maximum number of pixels
+ */
+uint16_t lfh_get_max_num_pixels();
 
 /*
 ============================================================================

@@ -123,6 +123,11 @@ uint16_t lfh_get_frame_size()
   return vars_get_num_pixels() * 3;
 }
 
+uint16_t lfh_get_max_num_pixels()
+{
+  return MAX_PIXELS;
+}
+
 /*
 ============================================================================
                               Frame handling                                
