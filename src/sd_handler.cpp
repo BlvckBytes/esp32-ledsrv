@@ -98,8 +98,8 @@ void sdh_watch_hotplug()
 */
 
 bool sdh_open_create_if_not_exists(
-  const char* path,
-  const char* mode,
+  const char *path,
+  const char *mode,
   File *f_out
 )
 {
@@ -108,10 +108,23 @@ bool sdh_open_create_if_not_exists(
 
   // Create file if not yet existing
   if (!SD.exists(path))
+  {
     SD.open(path, "w").close();
+    dbg_log("Created non-existing file %s\n", path);
+  }
 
   // Set buffer variable
   *f_out = SD.open(path, mode);
+  return true;
+}
+
+bool sdh_delete_file_if_exists(const char *path)
+{
+  // SD card not available
+  if (!sdh_avail) return false;
+
+  // Remove
+  SD.remove(path);
   return true;
 }
 
@@ -123,4 +136,9 @@ bool sdh_open_vars_file(const char* mode, File *f_out)
 bool sdh_open_frames_file(const char* mode, File *f_out)
 {
   return sdh_open_create_if_not_exists(SDH_FILE_FRAMES, mode, f_out);
+}
+
+bool sdh_delete_frames_file()
+{
+  return sdh_delete_file_if_exists(SDH_FILE_FRAMES);
 }

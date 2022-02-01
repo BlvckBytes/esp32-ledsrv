@@ -113,4 +113,12 @@ bool sdh_open_frames_file(const char* mode, File *f_out);
  */
 bool sdh_open_vars_file(const char* mode, File *f_out);
 
+/**
+ * @brief Delete the frames file from SD
+ * 
+ * @return true File could be deleted
+ * @return false File couldn't be deleted
+ */
+bool sdh_delete_frames_file();
+
 #endif

@@ -29,6 +29,9 @@ void setup()
   // Patch variables from file into memory
   vars_patch_from_json_file();
 
+  // Initialize frame handler
+  lfh_init();
+
   // Initial network connect attempt
   wfh_sta_connect_dhcp();
 
@@ -47,11 +50,11 @@ void setup()
 
 void loop()
 {
-  // // Ensure an active connection (as far as possible)
-  // if (!wfh_sta_ensure_connected())
-  // {
-  //   // INFO: Put wifi critical calls here
-  // }
+  // Ensure an active connection (as far as possible)
+  if (!wfh_sta_ensure_connected())
+  {
+    // INFO: Put wifi critical calls here
+  }
 
   // Check for reboot requests
   rbh_check_requests();
@@ -61,4 +64,7 @@ void loop()
 
   // Watch for SD card remove/insert
   sdh_watch_hotplug();
+
+  // Handle actual frame drawing
+  lfh_handle_frame();
 }

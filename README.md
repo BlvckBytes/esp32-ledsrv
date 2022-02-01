@@ -83,6 +83,7 @@ Known resultcodes:
 * `0x0F` Event subscriber buffer full
 * `0x10` Unknown event requested
 * `0x11` Device name invalid
+* `0x12` Too many frames
 
 Known opcodes:
 
@@ -93,7 +94,7 @@ Known opcodes:
   * Res: `0x00` | `0x01` | `0x02`
 * `0x01` Set active number of frames
   * Fmt: `<0x01><num_frames uint_16t>`
-  * Res: `0x00` | `0x01` | `0x02` | `0x04`
+  * Res: `0x00` | `0x01` | `0x02` | `0x04` | `0x12`
 * `0x02` Set frame content by index in framebuffer
   * Fmt: `<0x02><frame_index uint16_t>(<R uint8_t><G uint8_t><B uint8_t>)*num_pixels`
   * Res: `0x00` | `0x01` | `0x02` | `0x03` | `0x04` | `0x05` | `0x09`

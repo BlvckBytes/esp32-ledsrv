@@ -333,10 +333,45 @@ bool wsockh_handle_multi_packet_req(
   // String argument buffer
   static char strarg_buf[WSOCKH_STRARGBUF_SIZE][VARS_STRVALBUF_SIZE] = { { 0 } };
 
+  // Buffer for reading 16 bit arguments into
+  static uint16_t arg_16t_buf;
+
   uint32_t client_id = client->id();
 
   switch (data[0])
   {
+    case SET_FRAME_CONT:
+      // Cancel frame processing
+      lfh_deinit();
+
+      // Read frame index arg
+      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+
+      // Frame index out of range
+      if (arg_16t_buf >= lfh_get_num_frames_capped())
+      {
+        wsockh_send_resp(client, ERR_INVAL_FRAME_IND);
+        return true;
+      }
+
+      // Check if full frame is provided (frame_size + opcode + uint16_t arg)
+      if (len != lfh_get_frame_size() + 1 + 2)
+      {
+        wsockh_send_resp(client, ERR_NUM_PIXEL_MISMATCH);
+        return true;
+      }
+
+      // Could not write into file
+      if (!lfh_write_frame(arg_16t_buf, &data[3]))
+      {
+        wsockh_send_resp(client, ERR_NO_SD_ACC);
+        return true;
+      }
+
+      // Restart frame processing
+      lfh_init();
+      return true;
+
     case SET_WIFI_CRED:
       if (!wsockh_read_strings(client, 0, data, len, 2, strarg_buf)) return true;
       vars_set_wifi_ssid(strarg_buf[0]);
@@ -406,7 +441,19 @@ bool wsockh_handle_single_packet_req(
 
     case SET_NUM_FRAMES:
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+
+      // Cannot accept more frames than the cap allows
+      if (arg_16t_buf > lfh_get_num_frames_capped())
+      {
+        wsockh_send_resp(client, ERR_TOO_MANY_FRAMES);
+        return true;
+      }
+
+      lfh_deinit();
       vars_set_num_frames(arg_16t_buf);
+      lfh_resize_file();
+      lfh_init();
+
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       evh_fire_event(&client_id, NUM_FRAMES_SET);
       return true;
@@ -426,7 +473,12 @@ bool wsockh_handle_single_packet_req(
 
     case SET_NUM_PIXELS:
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+
+      lfh_deinit();
       vars_set_num_pixels(arg_16t_buf);
+      lfh_init_file();
+      lfh_init();
+
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       evh_fire_event(&client_id, NUM_PIXELS_SET);
       return true;
