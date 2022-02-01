@@ -347,6 +347,18 @@ bool wsockh_handle_multi_packet_req(
 
     case SET_DEV_NAME:
       if (!wsockh_read_strings(client, 0, data, len, 1, strarg_buf)) return true;
+
+      // Check if there are invalid characters inside the SSID
+      for (int i = 0; i < strlen(strarg_buf[0]); i++)
+      {
+        char c = strarg_buf[0][i];
+        if (c < 32 || c > 126)
+        {
+          wsockh_send_resp(client, ERR_INVAL_DEV_NAME);
+          return true;
+        }
+      }
+
       vars_set_dev_name(strarg_buf[0]);
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       evh_fire_event(&client_id, DEV_NAME_SET);
@@ -631,7 +643,7 @@ void wsockh_ev_handler(
 
 /*
 ============================================================================
-                            Basic socket control                            
+                            Event notification                             
 ============================================================================
 */
 
@@ -694,6 +706,12 @@ void wsockh_notify_client(uint32_t client_id, CommEventCode event)
       break;
   }
 }
+
+/*
+============================================================================
+                            Basic socket control                            
+============================================================================
+*/
 
 void wsockh_init()
 {

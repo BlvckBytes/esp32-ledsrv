@@ -24,6 +24,7 @@ typedef enum {
   ERR_TOO_MANY_STRARGS = 0x0E,
   ERR_EVT_SUBS_BUF_FULL = 0x0F,
   ERR_UNKNOWN_EVT_REQ = 0x10,
+  ERR_INVAL_DEV_NAME = 0x11
 } CommResultCode;
 
 #endif

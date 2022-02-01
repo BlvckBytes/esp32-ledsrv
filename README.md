@@ -23,7 +23,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] SD card JSON for variables
 - [ ] SD card BINARY for frames
 - [X] Add reboot opcode
-- [ ] Add SSID pattern validation
+- [X] Add dev_name (SSID) pattern validation
 - [X] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
 - [X] Cancel processing invalid (segmented) requests ASAP
@@ -82,6 +82,7 @@ Known resultcodes:
 * `0x0E` Too many string arguments
 * `0x0F` Event subscriber buffer full
 * `0x10` Unknown event requested
+* `0x11` Device name invalid
 
 Known opcodes:
 
