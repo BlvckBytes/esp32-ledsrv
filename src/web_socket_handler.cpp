@@ -376,6 +376,12 @@ bool wsockh_handle_single_packet_req(
       wsockh_send_resp(client, SUCCESS_NO_DATA);
       return true;
 
+    case SET_NUM_PIXELS:
+      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+      vars_set_num_pixels(arg_16t_buf);
+      wsockh_send_resp(client, SUCCESS_NO_DATA);
+      return true;
+
     case GET_FRAME_DUR:
       wsockh_send_arg_numeric(client, vars_get_frame_dur(), 2);
       return true;
@@ -404,6 +410,10 @@ bool wsockh_handle_single_packet_req(
     case GET_DEV_NAME:
       str_arg_buf = vars_get_dev_name();
       wsockh_send_strings(client, &str_arg_buf, 1);
+      return true;
+
+    case GET_NUM_PIXELS:
+      wsockh_send_arg_numeric(client, vars_get_num_pixels(), 2);
       return true;
 
     case REBOOT:

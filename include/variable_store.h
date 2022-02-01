@@ -22,6 +22,7 @@
 // Variable store default values
 #define VARS_DEF_FRAME_DUR 10
 #define VARS_DEF_NUM_FRAMES 1
+#define VARS_DEF_NUM_PIXELS 1
 #define VARS_DEF_BRIGHTNESS 255
 #define VARS_DEF_WIFI_SSID "YourSSID"
 #define VARS_DEF_WIFI_PASS "YourPassword"
@@ -49,6 +50,7 @@ typedef struct VariableStore
 {
   uint16_t frame_dur;
   uint16_t num_frames;
+  uint16_t num_pixels;
   uint8_t brightness;
   char wifi_ssid[VARS_STRVALBUF_SIZE];
   char wifi_pass[VARS_STRVALBUF_SIZE];
@@ -85,6 +87,7 @@ void vars_write_to_json_file();
 
 uint16_t vars_get_frame_dur();
 uint16_t vars_get_num_frames();
+uint16_t vars_get_num_pixels();
 uint16_t vars_get_brightness();
 const char* vars_get_wifi_ssid();
 const char* vars_get_wifi_pass();
@@ -98,6 +101,7 @@ const char* vars_get_dev_name();
 
 void vars_set_frame_dur(uint16_t v);
 void vars_set_num_frames(uint16_t v);
+void vars_set_num_pixels(uint16_t v);
 void vars_set_brightness(uint16_t v);
 void vars_set_wifi_ssid(const char* v);
 void vars_set_wifi_pass(const char* v);

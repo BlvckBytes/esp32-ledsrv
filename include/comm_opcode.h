@@ -10,6 +10,7 @@ typedef enum {
   SET_WIFI_CRED = 0x4,     //       n          W    <ssid\0><pass\0>
   SET_EVT_SUB = 0x5,       //       y          W    <uint8_t><uint8_t>
   SET_DEV_NAME = 0x6,      //       n          W    <dev_name\0>
+  SET_NUM_PIXELS = 0x7,    //       y          W    <uint16_t>
 
   GET_FRAME_DUR = 0x80,    //       y          R    /
   GET_NUM_FRAMES = 0x81,   //       y          R    /
@@ -19,6 +20,7 @@ typedef enum {
   GET_WIFI_SSID = 0x85,    //       y          R    /
   GET_SD_SIZE = 0x86,      //       y          R    /
   GET_DEV_NAME = 0x87,     //       y          R    /
+  GET_NUM_PIXELS = 0x88,   //       y          R    /
 
   REBOOT = 0xFF,           //       y          /    /
 } CommOpCode;

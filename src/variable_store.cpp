@@ -10,6 +10,7 @@
 static VariableStore vars_store = {
   VARS_DEF_FRAME_DUR,
   VARS_DEF_NUM_FRAMES,
+  VARS_DEF_NUM_PIXELS,
   VARS_DEF_BRIGHTNESS,
   VARS_DEF_WIFI_SSID,
   VARS_DEF_WIFI_PASS,
@@ -28,6 +29,7 @@ void vars_dbg_store()
     "{\n"
     "  frame_dur: %" PRIu16 ",\n"
     "  num_frames: %" PRIu16 ",\n"
+    "  num_pixels: %" PRIu16 ",\n"
     "  brightness: %" PRIu8 ",\n"
     "  wifi_ssid: \"%s\",\n"
     "  wifi_pass: \"%s\"\n"
@@ -35,6 +37,7 @@ void vars_dbg_store()
     "}\n",
     vars_store.frame_dur,
     vars_store.num_frames,
+    vars_store.num_pixels,
     vars_store.brightness,
     vars_store.wifi_ssid,
     vars_store.wifi_pass,
@@ -88,6 +91,7 @@ void vars_patch_from_json_file()
   // Patch json value into variable by name
   vars_patch_var_if_exists(json_doc, frame_dur);
   vars_patch_var_if_exists(json_doc, num_frames);
+  vars_patch_var_if_exists(json_doc, num_pixels);
   vars_patch_var_if_exists(json_doc, brightness);
   vars_patch_str_if_exists(json_doc, wifi_ssid);
   vars_patch_str_if_exists(json_doc, wifi_pass);
@@ -120,6 +124,7 @@ void vars_write_to_json_file()
   // Add all store vars to the doc
   vars_add_var_to_json_doc(json_doc, frame_dur);
   vars_add_var_to_json_doc(json_doc, num_frames);
+  vars_add_var_to_json_doc(json_doc, num_pixels);
   vars_add_var_to_json_doc(json_doc, brightness);
   vars_add_var_to_json_doc(json_doc, wifi_ssid);
   vars_add_var_to_json_doc(json_doc, wifi_pass);
@@ -147,6 +152,11 @@ uint16_t vars_get_frame_dur()
 uint16_t vars_get_num_frames()
 {
   return vars_store.num_frames;
+}
+
+uint16_t vars_get_num_pixels()
+{
+  return vars_store.num_pixels;
 }
 
 uint16_t vars_get_brightness()
@@ -190,6 +200,12 @@ void vars_set_num_frames(uint16_t v)
 {
   vars_store.num_frames = v;
   dbg_log("Set num_frames=%" PRIu16 "!\n", vars_store.num_frames);
+}
+
+void vars_set_num_pixels(uint16_t v)
+{
+  vars_store.num_pixels = v;
+  dbg_log("Set num_pixels=%" PRIu16 "!\n", vars_store.num_pixels);
 }
 
 void vars_set_brightness(uint16_t v)

@@ -17,6 +17,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] Serving write requests
 - [X] Serving read requests
 - [X] Add hostname as a store variable
+- [X] Add num_pixels as a store variable
 - [ ] Central event system
 - [ ] Frame/Pixel handler
 - [X] SD card JSON for variables
