@@ -54,11 +54,6 @@ void lfh_deinit();
 bool lfh_init_file();
 
 /**
- * @brief Resizes the frames file according to the current number of frames
- */
-void lfh_resize_file();
-
-/**
  * @brief Write the data of a frame to the persistent frame buffer
  * 
  * @param frame_index Zero based index of the frame

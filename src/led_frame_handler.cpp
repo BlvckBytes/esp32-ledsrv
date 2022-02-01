@@ -76,12 +76,6 @@ bool lfh_init_file()
   return true;
 }
 
-// TODO: Implement!
-void lfh_resize_file()
-{
-  // INFO: This should either add or remove frames from the file, based on the current capped number of frames
-}
-
 bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 {
   File handle;

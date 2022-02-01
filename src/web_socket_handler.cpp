@@ -451,7 +451,7 @@ bool wsockh_handle_single_packet_req(
 
       lfh_deinit();
       vars_set_num_frames(arg_16t_buf);
-      lfh_resize_file();
+      lfh_init_file();
       lfh_init();
 
       wsockh_send_resp(client, SUCCESS_NO_DATA);
