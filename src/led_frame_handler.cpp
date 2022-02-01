@@ -48,30 +48,22 @@ bool lfh_init_file()
     return false;
   }
 
-  // Create empty buffer (all pixels off)
-  uint16_t fsz = lfh_get_frame_size();
-  uint8_t empty_buf[fsz] = { 0 };
-
   // Write empty frames to it
-  for (uint16_t i = 0; i < fsz; i++)
+  uint8_t empty_pixel[ 3 ] = { 0 };
+  for (uint16_t i = 0; i < vars_get_num_frames(); i++)
   {
-    if (!handle.seek(i * fsz))
-    {
-      dbg_log("Could not seek next write position!\n");
-      return false;
-    }
-
     // Write empty frame
-    handle.write(empty_buf, fsz);
+    for (uint16_t j = 0; j < vars_get_num_pixels(); j++)
+      handle.write(empty_pixel, sizeof(empty_pixel));
   }
 
   dbg_log(
     "Initialized new frames file for num_pixels=%" PRIu16 " and num_frames=%" PRIu16 " !\n",
     vars_get_num_pixels(),
-    lfh_get_num_frames_capped()
+    vars_get_num_frames()
   );
 
-  // Close and thus flush
+  // Close resource
   handle.close();
   return true;
 }
@@ -80,8 +72,7 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 {
   File handle;
 
-  // Open file for write access
-  sdh_open_frames_file("w", &handle);
+  sdh_open_frames_file("r+", &handle);
 
   // Could not open file
   if (!handle) return false;
@@ -93,12 +84,30 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 
     // Re-try after trying to create a new file
     if (lfh_init_file())
-      lfh_write_frame(frame_index, frame_data);
+      return lfh_write_frame(frame_index, frame_data);
+
+    return false;
   }
 
-  // Write data
-  handle.write(frame_data, lfh_get_frame_size());
+  // Override currently selected frame with that data
+  size_t frame_data_pointer = 0;
+  uint8_t pixel_data_buf[3] = {};
+
+  for (uint16_t i = 0; i < vars_get_num_pixels(); i++)
+  {
+    memcpy(pixel_data_buf, &frame_data[frame_data_pointer], 3);
+    handle.write(pixel_data_buf, 3);
+    frame_data_pointer += 3;
+  }
+
   handle.close();
+
+  dbg_log(
+    "Overwrote frame %" PRIu16 " at offset %" PRIu32 "!\n",
+    frame_index,
+    lfh_get_frame_size() * frame_index
+  );
+
   return true;
 }
 
@@ -111,11 +120,6 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 uint16_t lfh_get_frame_slots()
 {
   return MAX_FRAMES;
-}
-
-uint16_t lfh_get_num_frames_capped()
-{
-  return min(vars_get_num_frames(), lfh_get_frame_slots());
 }
 
 uint16_t lfh_get_frame_size()
@@ -183,6 +187,7 @@ void lfh_handle_frame()
   if (lfh_framebuf.available() < frame_size)
   {
     dbg_log("Not enough LED frame data remaining, resetting!\n");
+    lfh_last_render = millis() - vars_get_frame_dur();
     lfh_current_frame = 0;
     return;
   }
@@ -198,6 +203,6 @@ void lfh_handle_frame()
   dbg_log("Pixel draw took around %ldms!\n", stop - start);
 
   // Advance to next frame
-  if (++lfh_current_frame == lfh_get_num_frames_capped())
+  if (++lfh_current_frame == vars_get_num_frames())
     lfh_current_frame = 0;
 }

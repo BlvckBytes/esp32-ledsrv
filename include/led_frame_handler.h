@@ -79,13 +79,6 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data);
 uint16_t lfh_get_frame_slots();
 
 /**
- * @brief Get the number of frames, capped by the storage capabilities
- * 
- * @return uint16_t Number of frames
- */
-uint16_t lfh_get_num_frames_capped();
-
-/**
  * @brief Get the size of an individual frame
  * 
  * @return uint16_t Size in bytes

@@ -19,9 +19,10 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] Add hostname as a store variable
 - [X] Add num_pixels as a store variable
 - [X] Central event system
-- [ ] Frame/Pixel handler
+- [X] Frame/Pixel handler
 - [X] SD card JSON for variables
-- [ ] SD card BINARY for frames
+- [X] SD card BINARY for frames
+- [ ] SD card BINARY file dump over socket (mostly for debugging)
 - [X] Add reboot opcode
 - [X] Add dev_name (SSID) pattern validation
 - [X] SD card hotplug

@@ -341,14 +341,11 @@ bool wsockh_handle_multi_packet_req(
   switch (data[0])
   {
     case SET_FRAME_CONT:
-      // Cancel frame processing
-      lfh_deinit();
-
       // Read frame index arg
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
 
       // Frame index out of range
-      if (arg_16t_buf >= lfh_get_num_frames_capped())
+      if (arg_16t_buf >= lfh_get_frame_slots())
       {
         wsockh_send_resp(client, ERR_INVAL_FRAME_IND);
         return true;
@@ -361,6 +358,9 @@ bool wsockh_handle_multi_packet_req(
         return true;
       }
 
+      // Cancel frame processing
+      lfh_deinit();
+
       // Could not write into file
       if (!lfh_write_frame(arg_16t_buf, &data[3]))
       {
@@ -370,6 +370,8 @@ bool wsockh_handle_multi_packet_req(
 
       // Restart frame processing
       lfh_init();
+
+      wsockh_send_resp(client, SUCCESS_NO_DATA);
       return true;
 
     case SET_WIFI_CRED:
@@ -443,8 +445,8 @@ bool wsockh_handle_single_packet_req(
       // Read num_frames
       if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
 
-      // Cannot accept more frames than the cap allows
-      if (arg_16t_buf > lfh_get_num_frames_capped())
+      // Cannot accept more frames than the slots allow
+      if (arg_16t_buf > lfh_get_frame_slots())
       {
         wsockh_send_resp(client, ERR_TOO_MANY_FRAMES);
         return true;
