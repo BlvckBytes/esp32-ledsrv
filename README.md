@@ -85,6 +85,7 @@ Known resultcodes:
 * `0x11` Device name invalid
 * `0x12` Too many frames
 * `0x13` Too many pixels
+* `0x14` Frame not available right now
 
 Known opcodes:
 
@@ -122,7 +123,7 @@ Known opcodes:
   * Res: `<0xFF><0x0000-0xFFFF>` | `0x09`
 * `0x83` Get frame content by index
   * Fmt: `<0x83><frame_index uint16_t>`
-  * Res: `<0xFF>(<8b R><8b G><8b B>)*num_pixels` | `0x04` | `0x09`
+  * Res: `<0xFF>(<8b R><8b G><8b B>)*num_pixels` | `0x04` | `0x09` | `0x14`
 * `0x84` Get total brightness
   * Fmt: `<0x84>`
   * Res: `<0xFF><0x00-0xFF>`

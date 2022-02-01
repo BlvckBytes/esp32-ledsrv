@@ -67,6 +67,23 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data);
 
 /*
 ============================================================================
+                             Framebuffer read                               
+============================================================================
+*/
+
+/**
+ * @brief Read the frame from persistent data into a buffer
+ * 
+ * @param frame_index Zero based index of the frame
+ * @param out_buf Buffer to store data in
+ * 
+ * @return true Successfully read into buffer
+ * @return false Data not available atm
+ */
+bool lfh_read_frame(uint16_t frame_index, uint8_t *out_buf);
+
+/*
+============================================================================
                              Framebuffer info                               
 ============================================================================
 */

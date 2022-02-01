@@ -113,6 +113,30 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 
 /*
 ============================================================================
+                             Framebuffer read                               
+============================================================================
+*/
+
+bool lfh_read_frame(uint16_t frame_index, uint8_t *out_buf)
+{
+  // Persistent buffer not available
+  if (!lfh_framebuf) return false;
+
+  uint16_t frame_size = lfh_get_frame_size();
+
+  // Could not seek frame start
+  if (!lfh_framebuf.seek(frame_size * frame_index)) return false;
+
+  // Not enough bytes remaining
+  if (lfh_framebuf.available() < frame_size) return false;
+
+  // Read frame into external buffer
+  lfh_framebuf.read(out_buf, frame_size);
+  return true;
+}
+
+/*
+============================================================================
                              Framebuffer info                               
 ============================================================================
 */

@@ -336,74 +336,78 @@ bool wsockh_handle_multi_packet_req(
   // Buffer for reading 16 bit arguments into
   static uint16_t arg_16t_buf;
 
+  uint8_t oc_id = data[0];
   uint32_t client_id = client->id();
 
-  switch (data[0])
+  if (oc_id == SET_FRAME_CONT)
   {
-    case SET_FRAME_CONT:
-      // Read frame index arg
-      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+    // Read frame index arg
+    if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
 
-      // Frame index out of range
-      if (arg_16t_buf >= lfh_get_frame_slots())
-      {
-        wsockh_send_resp(client, ERR_INVAL_FRAME_IND);
-        return true;
-      }
-
-      // Check if full frame is provided (frame_size + opcode + uint16_t arg)
-      if (len != lfh_get_frame_size() + 1 + 2)
-      {
-        wsockh_send_resp(client, ERR_NUM_PIXEL_MISMATCH);
-        return true;
-      }
-
-      // Cancel frame processing
-      lfh_deinit();
-
-      // Could not write into file
-      if (!lfh_write_frame(arg_16t_buf, &data[3]))
-      {
-        wsockh_send_resp(client, ERR_NO_SD_ACC);
-        return true;
-      }
-
-      // Restart frame processing
-      lfh_init();
-
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
+    // Frame index out of range
+    if (arg_16t_buf >= lfh_get_frame_slots())
+    {
+      wsockh_send_resp(client, ERR_INVAL_FRAME_IND);
       return true;
+    }
 
-    case SET_WIFI_CRED:
-      if (!wsockh_read_strings(client, 0, data, len, 2, strarg_buf)) return true;
-      vars_set_wifi_ssid(strarg_buf[0]);
-      vars_set_wifi_pass(strarg_buf[1]);
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, WIFI_CRED_SET);
+    // Check if full frame is provided (frame_size + opcode + uint16_t arg)
+    if (len != lfh_get_frame_size() + 1 + 2)
+    {
+      wsockh_send_resp(client, ERR_NUM_PIXEL_MISMATCH);
       return true;
+    }
 
-    case SET_DEV_NAME:
-      if (!wsockh_read_strings(client, 0, data, len, 1, strarg_buf)) return true;
+    // Cancel frame processing
+    lfh_deinit();
 
-      // Check if there are invalid characters inside the SSID
-      for (int i = 0; i < strlen(strarg_buf[0]); i++)
-      {
-        char c = strarg_buf[0][i];
-        if (c < 32 || c > 126)
-        {
-          wsockh_send_resp(client, ERR_INVAL_DEV_NAME);
-          return true;
-        }
-      }
-
-      vars_set_dev_name(strarg_buf[0]);
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, DEV_NAME_SET);
+    // Could not write into file
+    if (!lfh_write_frame(arg_16t_buf, &data[3]))
+    {
+      wsockh_send_resp(client, ERR_NO_SD_ACC);
       return true;
-  
-    default:
-      return false;
+    }
+
+    // Restart frame processing
+    lfh_init();
+
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    return true;
   }
+
+  if (oc_id == SET_WIFI_CRED)
+  {
+    if (!wsockh_read_strings(client, 0, data, len, 2, strarg_buf)) return true;
+    vars_set_wifi_ssid(strarg_buf[0]);
+    vars_set_wifi_pass(strarg_buf[1]);
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    evh_fire_event(&client_id, WIFI_CRED_SET);
+    return true;
+  }
+
+  if (oc_id == SET_DEV_NAME)
+  {
+    if (!wsockh_read_strings(client, 0, data, len, 1, strarg_buf)) return true;
+
+    // Check if there are invalid characters inside the SSID
+    for (int i = 0; i < strlen(strarg_buf[0]); i++)
+    {
+      char c = strarg_buf[0][i];
+      if (c < 32 || c > 126)
+      {
+        wsockh_send_resp(client, ERR_INVAL_DEV_NAME);
+        return true;
+      }
+    }
+
+    vars_set_dev_name(strarg_buf[0]);
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    evh_fire_event(&client_id, DEV_NAME_SET);
+    return true;
+  }
+
+  // Unknown op code!
+  return false;
 }
 
 /**
@@ -424,142 +428,185 @@ bool wsockh_handle_single_packet_req(
   size_t len
 )
 {
-  // Buffer for reading 16 bit arguments into
+  // Buffers for reading 16 bit arguments into
   static uint16_t arg_16t_buf, arg_16t_buf_2;
 
-  // Buffer for holding result string arguments from function returns
-  const char *str_arg_buf;
-
+  uint8_t oc_id = data[0];
   uint32_t client_id = client->id();
 
-  switch (data[0])
+  if (oc_id == SET_FRAME_DUR)
   {
-    case SET_FRAME_DUR:
-      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
-      vars_set_frame_dur(arg_16t_buf);
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, FRAME_DUR_SET);
-      return true;
-
-    case SET_NUM_FRAMES_NUM_PIXELS:
-      // Read num_frames
-      if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
-
-      // Cannot accept more frames than the slots allow
-      if (arg_16t_buf > lfh_get_frame_slots())
-      {
-        wsockh_send_resp(client, ERR_TOO_MANY_FRAMES);
-        return true;
-      }
-
-      // Read num_pixels
-      if (!wsockh_read_arg_16t(client, 2, data, len, &arg_16t_buf_2)) return true;
-
-      // More pixels than capable of handling
-      if (arg_16t_buf > lfh_get_max_num_pixels())
-      {
-        wsockh_send_resp(client, ERR_TOO_MANY_PIXELS);
-        return true;
-      }
-
-      lfh_deinit();
-      vars_set_num_frames(arg_16t_buf);
-      vars_set_num_pixels(arg_16t_buf_2);
-      lfh_init_file();
-      lfh_init();
-
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, NUM_FRAMES_NUM_PIXELS_SET);
-      return true;
-
-    case SET_BRIGHTNESS:
-      // <opcode><brightness uint8_t>
-      if (len != 2)
-      {
-        wsockh_send_resp(client, ERR_ARGS_MISMATCH);
-        return true;
-      }
-
-      vars_set_brightness(data[1]);
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      evh_fire_event(&client_id, BRIGHTNESS_SET);
-      return true;
-
-    case SET_EVT_SUB:
-      // <opcode><eventcode uint8_t><state uint8_t>
-      if (len != 3)
-      {
-        wsockh_send_resp(client, ERR_ARGS_MISMATCH);
-        return true;
-      }
-
-      // Create registration if not yet exists
-      if (evh_exists_client(client->id()))
-      {
-        // Cannot add any other listeners!
-        if (!evh_add_client(client->id()))
-        {
-          wsockh_send_resp(client, ERR_EVT_SUBS_BUF_FULL);
-          return true;
-        }
-      }
-      
-      // Check if event code is out of range
-      if (data[1] >= CEV_NUM_EVENTS)
-      {
-        wsockh_send_resp(client, ERR_UNKNOWN_EVT_REQ);
-        return true;
-      }
-
-      // Set subscription status
-      evh_set_subscription(client->id(), (CommEventCode) data[1], data[2] != 0);
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      return true;
-
-    case GET_FRAME_DUR:
-      wsockh_send_arg_numeric(client, vars_get_frame_dur(), 2);
-      return true;
-
-    case GET_NUM_FRAMES_NUM_PIXELS:
-      wsockh_send_arg_numeric(
-        client,
-        (vars_get_num_frames() << 16) | vars_get_num_pixels(),
-        4
-      );
-      return true;
-
-    case GET_FRAME_SLOTS:
-      wsockh_send_arg_numeric(client, lfh_get_frame_slots(), 2);
-      return true;
-
-    case GET_BRIGHTNESS:
-      wsockh_send_arg_numeric(client, vars_get_brightness(), 2);
-      return true;
-
-    case GET_WIFI_SSID:
-      str_arg_buf = vars_get_wifi_ssid();
-      wsockh_send_strings(client, &str_arg_buf, 1);
-      return true;
-
-    case GET_SD_SIZE:
-      wsockh_send_arg_numeric(client, sdh_get_total_size_mb(), 4);
-      return true;
-
-    case GET_DEV_NAME:
-      str_arg_buf = vars_get_dev_name();
-      wsockh_send_strings(client, &str_arg_buf, 1);
-      return true;
-
-    case REBOOT:
-      wsockh_send_resp(client, SUCCESS_NO_DATA);
-      dbg_log("Restarting device in %dms!\n", WSOCKH_REB_DEL);
-      rbh_request_schedule(WSOCKH_REB_DEL );
-      return true;
-
-    // Not handleable with one request-frame
-    default:
-      return false;
+    if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+    vars_set_frame_dur(arg_16t_buf);
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    evh_fire_event(&client_id, FRAME_DUR_SET);
+    return true;
   }
+
+  if (oc_id == SET_NUM_FRAMES_NUM_PIXELS)
+  {
+    // Read num_frames
+    if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+
+    // Cannot accept more frames than the slots allow
+    if (arg_16t_buf > lfh_get_frame_slots())
+    {
+      wsockh_send_resp(client, ERR_TOO_MANY_FRAMES);
+      return true;
+    }
+
+    // Read num_pixels
+    if (!wsockh_read_arg_16t(client, 2, data, len, &arg_16t_buf_2)) return true;
+
+    // More pixels than capable of handling
+    if (arg_16t_buf > lfh_get_max_num_pixels())
+    {
+      wsockh_send_resp(client, ERR_TOO_MANY_PIXELS);
+      return true;
+    }
+
+    lfh_deinit();
+    vars_set_num_frames(arg_16t_buf);
+    vars_set_num_pixels(arg_16t_buf_2);
+    lfh_init_file();
+    lfh_init();
+
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    evh_fire_event(&client_id, NUM_FRAMES_NUM_PIXELS_SET);
+    return true;
+  }
+
+  if(oc_id == SET_BRIGHTNESS)
+  {
+    // <opcode><brightness uint8_t>
+    if (len != 2)
+    {
+      wsockh_send_resp(client, ERR_ARGS_MISMATCH);
+      return true;
+    }
+
+    vars_set_brightness(data[1]);
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    evh_fire_event(&client_id, BRIGHTNESS_SET);
+    return true;
+  }
+
+  if (oc_id == SET_EVT_SUB)
+  {
+    // <opcode><eventcode uint8_t><state uint8_t>
+    if (len != 3)
+    {
+      wsockh_send_resp(client, ERR_ARGS_MISMATCH);
+      return true;
+    }
+
+    // Create registration if not yet exists
+    if (evh_exists_client(client->id()))
+    {
+      // Cannot add any other listeners!
+      if (!evh_add_client(client->id()))
+      {
+        wsockh_send_resp(client, ERR_EVT_SUBS_BUF_FULL);
+        return true;
+      }
+    }
+    
+    // Check if event code is out of range
+    if (data[1] >= CEV_NUM_EVENTS)
+    {
+      wsockh_send_resp(client, ERR_UNKNOWN_EVT_REQ);
+      return true;
+    }
+
+    // Set subscription status
+    evh_set_subscription(client->id(), (CommEventCode) data[1], data[2] != 0);
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    return true;
+  }
+
+  if (oc_id == GET_FRAME_DUR)
+  {
+    wsockh_send_arg_numeric(client, vars_get_frame_dur(), 2);
+    return true;
+  }
+
+  if (oc_id == GET_NUM_FRAMES_NUM_PIXELS)
+  {
+    wsockh_send_arg_numeric(
+      client,
+      (vars_get_num_frames() << 16) | vars_get_num_pixels(),
+      4
+    );
+    return true;
+  }
+
+  if (oc_id == GET_FRAME_SLOTS)
+  {
+    wsockh_send_arg_numeric(client, lfh_get_frame_slots(), 2);
+    return true;
+  }
+
+  if (oc_id == GET_FRAME_CONT)
+  {
+    // Read frame_index
+    if (!wsockh_read_arg_16t(client, 0, data, len, &arg_16t_buf)) return true;
+
+    // Frame index out of range
+    if (arg_16t_buf >= vars_get_num_frames())
+    {
+      wsockh_send_resp(client, ERR_INVAL_FRAME_IND);
+      return true;
+    }
+
+    // Could not read frame
+    uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
+    if (!lfh_read_frame(arg_16t_buf, frame_data_buf))
+    {
+      wsockh_send_resp(client, ERR_CANNOT_READ_FRAME);
+      return true;
+    }
+
+    // Send frame data over to the client
+    wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, frame_data_buf, sizeof(frame_data_buf));
+    return true;
+  }
+
+  if (oc_id == GET_BRIGHTNESS)
+  {
+    wsockh_send_arg_numeric(client, vars_get_brightness(), 2);
+    return true;
+  }
+
+  if (oc_id == GET_WIFI_SSID)
+  {
+    const char* ssid = vars_get_wifi_ssid();
+    wsockh_send_strings(client, &ssid, 1);
+    return true;
+  }
+
+  if (oc_id == GET_SD_SIZE)
+  {
+    wsockh_send_arg_numeric(client, sdh_get_total_size_mb(), 4);
+    return true;
+  }
+
+  if (oc_id == GET_DEV_NAME)
+  {
+    const char* dev_name = vars_get_dev_name();
+    wsockh_send_strings(client, &dev_name, 1);
+    return true;
+  }
+
+  if (oc_id == REBOOT)
+  {
+    wsockh_send_resp(client, SUCCESS_NO_DATA);
+    dbg_log("Restarting device in %dms!\n", WSOCKH_REB_DEL);
+    rbh_request_schedule(WSOCKH_REB_DEL );
+    return true;
+  }
+
+  // Not handleable with one request-frame
+  return false;
 }
 
 /*
@@ -723,42 +770,50 @@ void wsockh_notify_client(uint32_t client_id, CommEventCode event)
   // Local event variable to have a pointer for function calls
   uint8_t ev = event;
 
-  switch (event)
+  if (ev == FRAME_DUR_SET)
   {
-    case FRAME_DUR_SET:
-      wsockh_send_arg_numeric(cl, vars_get_frame_dur(), 2, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    case NUM_FRAMES_NUM_PIXELS_SET:
-      wsockh_send_arg_numeric(cl,
-        ((vars_get_num_frames() << 16) | vars_get_num_pixels()),
-        4,
-        SUBSCRIBED_EV_FIRED, &ev
-      );
-      break;
-
-    case BRIGHTNESS_SET:
-      wsockh_send_arg_numeric(cl, vars_get_brightness(), 1, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    case WIFI_CRED_SET:
-      str_arg = vars_get_wifi_ssid();
-      wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    case SD_CARD_STATE:
-      wsockh_send_arg_numeric(cl, sdh_io_available() ? 0x1 : 0x0, 1, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    case DEV_NAME_SET:
-      str_arg = vars_get_dev_name();
-      wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
-      break;
-
-    default:
-      dbg_log("Could not set yet unknown event %d!\n", ev);
-      break;
+    wsockh_send_arg_numeric(cl, vars_get_frame_dur(), 2, SUBSCRIBED_EV_FIRED, &ev);
+    return;
   }
+
+  if (ev == NUM_FRAMES_NUM_PIXELS_SET)
+  {
+    wsockh_send_arg_numeric(cl,
+      ((vars_get_num_frames() << 16) | vars_get_num_pixels()),
+      4,
+      SUBSCRIBED_EV_FIRED, &ev
+    );
+    return;
+  }
+
+  if (ev == BRIGHTNESS_SET)
+  {
+    wsockh_send_arg_numeric(cl, vars_get_brightness(), 1, SUBSCRIBED_EV_FIRED, &ev);
+    return;
+  }
+
+  if (ev == WIFI_CRED_SET)
+  {
+    str_arg = vars_get_wifi_ssid();
+    wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
+    return;
+  }
+
+  if (ev == SD_CARD_STATE)
+  {
+    wsockh_send_arg_numeric(cl, sdh_io_available() ? 0x1 : 0x0, 1, SUBSCRIBED_EV_FIRED, &ev);
+    return;
+  }
+
+  if (ev == DEV_NAME_SET)
+  {
+    str_arg = vars_get_dev_name();
+    wsockh_send_strings(cl, &str_arg, 1, SUBSCRIBED_EV_FIRED, &ev);
+    return;
+  }
+
+  // Unknown event encountered
+  dbg_log("Could not set yet unknown event %d!\n", ev);
 }
 
 /*
