@@ -12,6 +12,7 @@
 #include <dbg_log.h>
 #include <variable_store.h>
 #include <FS.h>
+#include <esp32-hal-rmt.h>
 
 /*
 ============================================================================
@@ -20,8 +21,15 @@
 */
 
 // WARNING: This value needs to be calculated at runtime depending on the SD remaining size, clamped to a max of uint16_t
-#define MAX_FRAMES 180
-#define MAX_PIXELS 1024
+#define LFH_MAX_FRAMES 180
+#define LFH_MAX_PIXELS 1024
+
+// LED hardware config
+#define LFH_LED_DATA_PIN 13
+#define LFH_LED_DUR_T10_US 8
+#define LFH_LED_DUR_T11_US 4
+#define LFH_LED_DUR_T00_US 4
+#define LFH_LED_DUR_T01_US 8
 
 /*
 ============================================================================

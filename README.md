@@ -24,6 +24,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] SD card BINARY for frames
 - [ ] SD card BINARY file dump over socket (mostly for debugging)
 - [X] Add reboot opcode
+- [ ] More granularity within dbg_log than just on/off
 - [ ] Actually implement frame drawing (fastled or diy)
 - [X] Add dev_name (SSID) pattern validation
 - [X] SD card hotplug

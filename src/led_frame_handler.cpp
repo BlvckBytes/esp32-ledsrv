@@ -2,6 +2,112 @@
 
 /*
 ============================================================================
+                               RMT management                               
+============================================================================
+*/
+
+static rmt_data_t *lfh_rmt_data;
+static size_t lfh_rmt_data_size;
+static rmt_obj_t *lfh_rmt_handle = NULL;
+
+void lfh_rmt_alloc()
+{
+  // Calculate needed size to hold a full frame
+  lfh_rmt_data_size = (
+    vars_get_num_pixels() // Number of frames
+    * 3 // Three pixels per led
+    * 8 // Eight bits per pixel
+  );
+
+  // Allocate that many structs
+  lfh_rmt_data = (rmt_data_t *) malloc(sizeof(rmt_data_t) * lfh_rmt_data_size);
+  if (!lfh_rmt_data)
+  {
+    dbg_log("Could not allocate rmt_data_t pixel-bit buffer!\n");
+    return;
+  }
+
+  dbg_log("Allocated %" PRIu32 " rmt_data_t's for the RMT buffer!\n", lfh_rmt_data_size);
+
+  // Initialize important fields
+  for (int i = 0; i < lfh_rmt_data_size; i++)
+  {
+    rmt_data_t *curr = &lfh_rmt_data[i];
+    curr->level0 = 1;
+    curr->level1 = 0;
+    curr->duration0 = 4;
+    curr->duration1 = 8;
+  }
+
+  // Allocate RMT "device" if not existing yet
+  if (lfh_rmt_handle == NULL)
+  {
+    lfh_rmt_handle = rmtInit(LFH_LED_DATA_PIN, true, RMT_MEM_64);
+    if (!lfh_rmt_handle)
+    {
+      dbg_log("Could not allocate rmt handle!");
+      return;
+    }
+
+    // Set the clock divider
+    rmtSetTick(lfh_rmt_handle, 100);
+    dbg_log("Allocated RMT \"device\" and set the clock divider!\n");
+  }
+}
+
+void lfh_rmt_dealloc()
+{
+  // Free buffer
+  free(lfh_rmt_data);
+  lfh_rmt_data_size = 0;
+}
+
+void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size)
+{
+  // Iterate frames
+  for (int i = 0; i < frame_size; i += 3)
+  {
+    // Extract individual pixels
+    uint32_t color_com = (
+      frame_data[i] << 16) | // R byte
+      (frame_data[i + 1] << 8) | // G byte
+      (frame_data[i + 2] // B byte
+    );
+
+    // Iterate bits within this pixel
+    for (int j = 0; j < 8 * 3; j++)
+    {
+      // TODO: Think about R G B byte position macros here, as it's swapped now
+      // TODO: and depends on the chip built into the LED
+
+      // Mask out individual bits of this pixel, reverse bit-order
+      bool pix_sta = color_com & (1 << (8 * 3 - j - 1));
+
+      // Get a pointer to the current data
+      rmt_data_t *curr_dat = &lfh_rmt_data[
+        (i / 3) // Pixel index
+        * (8 * 3) // Offset per pixel
+        + j // Pixel's bit index
+      ];
+
+      // Apply durations
+      curr_dat->duration0 = pix_sta ? LFH_LED_DUR_T10_US : LFH_LED_DUR_T00_US;
+      curr_dat->duration1 = pix_sta ? LFH_LED_DUR_T11_US : LFH_LED_DUR_T01_US;
+    }
+  }
+}
+
+void lfh_rmt_write_frame()
+{
+  if (!rmtWrite(lfh_rmt_handle, lfh_rmt_data, lfh_rmt_data_size))
+  {
+    dbg_log("Could not write data using rmt!\n");
+    return;
+  }
+}
+
+/*
+============================================================================
                                Basic control                                
 ============================================================================
 */
@@ -12,14 +118,21 @@ static uint32_t lfh_current_frame;
 
 void lfh_init()
 {
+  // Open frame onto local frame handle
   sdh_open_frames_file("r", &lfh_framebuf);
+
+  // Reset frame timing
   lfh_last_render = millis();
   lfh_current_frame = 0;
+
+  // Allocate RMT related resources
+  lfh_rmt_alloc();
 }
 
 void lfh_deinit()
 {
   if (lfh_framebuf) lfh_framebuf.close();
+  lfh_rmt_dealloc();
 }
 
 /*
@@ -49,7 +162,7 @@ bool lfh_init_file()
   }
 
   // Write empty frames to it
-  uint8_t empty_pixel[ 3 ] = { 0 };
+  uint8_t empty_pixel[3] = { 0 };
   for (uint16_t i = 0; i < vars_get_num_frames(); i++)
   {
     // Write empty frame
@@ -143,7 +256,7 @@ bool lfh_read_frame(uint16_t frame_index, uint8_t *out_buf)
 
 uint16_t lfh_get_frame_slots()
 {
-  return MAX_FRAMES;
+  return LFH_MAX_FRAMES;
 }
 
 uint16_t lfh_get_frame_size()
@@ -153,7 +266,7 @@ uint16_t lfh_get_frame_size()
 
 uint16_t lfh_get_max_num_pixels()
 {
-  return MAX_PIXELS;
+  return LFH_MAX_PIXELS;
 }
 
 /*
@@ -165,10 +278,10 @@ uint16_t lfh_get_max_num_pixels()
 /**
  * @brief Draw a frame to the pixels
  * 
- * @param frame_buf Frame buffer containing pixel color data
+ * @param frame_data Frame data buffer containing pixel color data
  * @param frame_size Size of one frame in bytes
  */
-void lfh_draw_frame(uint8_t *frame_buf, uint32_t frame_size)
+void lfh_draw_frame(uint8_t *frame_data, uint32_t frame_size)
 {
   // Each pixel has to have three color components
   if (frame_size % 3 != 0)
@@ -177,10 +290,14 @@ void lfh_draw_frame(uint8_t *frame_buf, uint32_t frame_size)
     return;
   }
 
-  dbg_log("Drawing frame %" PRIu32 "! :)\n", lfh_current_frame);
+  // for (int i = 0; i < frame_size; i += 3)
+  //   dbg_log("(%" PRIu8 ", %" PRIu8 ", %" PRIu8 ")\n", frame_data[i], frame_data[i + 1], frame_data[i + 2]);
 
-  for (int i = 0; i < frame_size; i += 3)
-    dbg_log("(%" PRIu8 ", %" PRIu8 ", %" PRIu8 ")\n", frame_buf[i], frame_buf[i + 1], frame_buf[i + 2]);
+  // Copy frame data into RMT bit-buffer and write it out
+  lfh_rmt_copy_frame(frame_data, frame_size);
+  lfh_rmt_write_frame();
+
+  dbg_log("Drawed %" PRIu32 "!\n", lfh_current_frame);
 }
 
 void lfh_handle_frame()
