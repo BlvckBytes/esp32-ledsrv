@@ -359,7 +359,7 @@ bool wsockh_handle_multi_packet_req(
     }
 
     // Cancel frame processing
-    lfh_deinit();
+    // lfh_deinit();
 
     // Could not write into file
     if (!lfh_write_frame(arg_16t_buf, &data[3]))
@@ -369,7 +369,7 @@ bool wsockh_handle_multi_packet_req(
     }
 
     // Restart frame processing
-    lfh_init();
+    // lfh_init();
 
     wsockh_send_resp(client, SUCCESS_NO_DATA);
     return true;

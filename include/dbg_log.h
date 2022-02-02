@@ -16,7 +16,7 @@
 */
 
 // Whether or not to route debug log calls
-#define DBGL_ACTIVE true
+#define DBGL_ACTIVE false
 #define DBGL_BAUD 115200
 
 // Debug is active, route requests to serial comm

@@ -115,6 +115,9 @@ void lfh_rmt_write_frame()
 static File lfh_framebuf;
 static long lfh_last_render;
 static uint32_t lfh_current_frame;
+static uint8_t *frame_buf = NULL; //[frame_size] = { 0 };
+
+Adafruit_NeoPixel strip(180, LFH_LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 void lfh_init()
 {
@@ -126,13 +129,21 @@ void lfh_init()
   lfh_current_frame = 0;
 
   // Allocate RMT related resources
-  lfh_rmt_alloc();
+  // lfh_rmt_alloc();
+
+  frame_buf = (uint8_t *) malloc(lfh_get_frame_size());
+
+  strip.begin();
+  strip.show();
 }
 
 void lfh_deinit()
 {
   if (lfh_framebuf) lfh_framebuf.close();
-  lfh_rmt_dealloc();
+  // lfh_rmt_dealloc();
+
+  if (frame_buf)
+    free(frame_buf);
 }
 
 /*
@@ -281,7 +292,7 @@ uint16_t lfh_get_max_num_pixels()
  * @param frame_data Frame data buffer containing pixel color data
  * @param frame_size Size of one frame in bytes
  */
-void lfh_draw_frame(uint8_t *frame_data, uint32_t frame_size)
+void lfh_draw_frame2(uint8_t *frame_data, uint32_t frame_size)
 {
   // Each pixel has to have three color components
   if (frame_size % 3 != 0)
@@ -298,6 +309,16 @@ void lfh_draw_frame(uint8_t *frame_data, uint32_t frame_size)
   lfh_rmt_write_frame();
 
   dbg_log("Drawed %" PRIu32 "!\n", lfh_current_frame);
+}
+
+void lfh_draw_frame(uint8_t *frame_data, uint32_t frame_size)
+{
+  for (int i = 0; i < frame_size; i+=3)
+  {
+    uint8_t r = frame_data[i], g = frame_data[i + 1], b = frame_data[i + 2];
+    strip.setPixelColor(i / 3, r, g, b);
+  }
+  strip.show();
 }
 
 void lfh_handle_frame()
@@ -321,8 +342,6 @@ void lfh_handle_frame()
     lfh_current_frame = 0;
     return;
   }
-
-  uint8_t frame_buf[frame_size] = { 0 };
 
   // File has not enough bytes remaining, thus no frame info available from here on onwards, reset
   if (lfh_framebuf.available() < frame_size)

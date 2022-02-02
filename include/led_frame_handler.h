@@ -13,6 +13,7 @@
 #include <variable_store.h>
 #include <FS.h>
 #include <esp32-hal-rmt.h>
+#include <Adafruit_NeoPixel.h>
 
 /*
 ============================================================================

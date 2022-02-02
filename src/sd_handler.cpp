@@ -26,7 +26,7 @@ void sdh_set_avail(bool state)
 bool sdh_init()
 {
   // Begin SD library using known pin layout
-  if (SD.begin(SDH_PIN_CS)) {
+  if (SD.begin(SDH_PIN_CS, SPI, SDH_SPI_FREQ)) {
     dbg_log("SD card slot initialized (type=%" PRIu8 ")!\n", SD.cardType());
     sdh_set_avail(true);
   } else {
