@@ -6,60 +6,90 @@
 ============================================================================
 */
 
-static rmt_data_t *lfh_rmt_data;
-static size_t lfh_rmt_data_size;
-static rmt_obj_t *lfh_rmt_handle = NULL;
+// RMT transmission buffer
+static rmt_data_t *lfh_rmt_tx_data;
+static size_t lfh_rmt_tx_data_size;
 
-void lfh_rmt_alloc()
+/**
+ * @brief Initialize the RMT transmission buffer with standard values
+ */
+void lfh_rmt_tx_data_init()
+{
+  // Initialize important fields
+  for (int i = 0; i < lfh_rmt_tx_data_size; i++)
+  {
+    rmt_data_t *curr = &lfh_rmt_tx_data[i];
+
+    // Level 0 is always HIGH while Level 1 will always be LOW
+    curr->level0 = 1;
+    curr->level1 = 0;
+
+    // Dummy values, get patched per frame individually
+    curr->duration0 = 1;
+    curr->duration1 = 1;
+  }
+
+  dbg_log("Initialized the RMT transmission buffer!\n");
+}
+
+/**
+ * @brief Allocate the RMT transmission buffer
+ */
+void lfh_rmt_tx_data_alloc()
 {
   // Calculate needed size to hold a full frame
-  lfh_rmt_data_size = (
+  lfh_rmt_tx_data_size = (
     vars_get_num_pixels() // Number of frames
     * 3 // Three pixels per led
     * 8 // Eight bits per pixel
   );
 
-  // Allocate that many structs
-  lfh_rmt_data = (rmt_data_t *) malloc(sizeof(rmt_data_t) * lfh_rmt_data_size);
-  if (!lfh_rmt_data)
+  // Allocate that many data-structs
+  lfh_rmt_tx_data = (rmt_data_t *) malloc(sizeof(rmt_data_t) * lfh_rmt_tx_data_size);
+  if (!lfh_rmt_tx_data)
   {
     dbg_log("Could not allocate rmt_data_t pixel-bit buffer!\n");
     return;
   }
 
-  dbg_log("Allocated %" PRIu32 " rmt_data_t's for the RMT buffer!\n", lfh_rmt_data_size);
-
-  // Initialize important fields
-  for (int i = 0; i < lfh_rmt_data_size; i++)
-  {
-    rmt_data_t *curr = &lfh_rmt_data[i];
-    curr->level0 = 1;
-    curr->level1 = 0;
-    curr->duration0 = 4;
-    curr->duration1 = 8;
-  }
-
-  // Allocate RMT "device" if not existing yet
-  if (lfh_rmt_handle == NULL)
-  {
-    lfh_rmt_handle = rmtInit(LFH_LED_DATA_PIN, true, RMT_MEM_64);
-    if (!lfh_rmt_handle)
-    {
-      dbg_log("Could not allocate rmt handle!");
-      return;
-    }
-
-    // Set the clock divider
-    rmtSetTick(lfh_rmt_handle, 100);
-    dbg_log("Allocated RMT \"device\" and set the clock divider!\n");
-  }
+  dbg_log("Allocated %" PRIu32 " rmt_data_t's for the RMT transmission buffer!\n", lfh_rmt_tx_data_size);
 }
 
+/**
+ * @brief Free the RMT transmission buffer
+ */
 void lfh_rmt_dealloc()
 {
   // Free buffer
-  free(lfh_rmt_data);
-  lfh_rmt_data_size = 0;
+  free(lfh_rmt_tx_data);
+  lfh_rmt_tx_data_size = 0;
+}
+
+/**
+ * @brief Initialize the RMT devic
+ */
+void lfh_rmt_init()
+{
+  // Create transmission buffer
+  lfh_rmt_tx_data_alloc();
+  lfh_rmt_tx_data_init();
+
+  // Configure device
+  rmt_config_t cfg = {
+    RMT_MODE_TX, RMT_CHANNEL_0, // Transmit on CH0
+    LFH_LED_CLK_DIV,
+    (gpio_num_t) LFH_LED_DATA_PIN,
+    0x1,
+    {
+      false, // No loop
+      0, 0, RMT_CARRIER_LEVEL_LOW, false, // No carrier
+      RMT_IDLE_LEVEL_LOW, true // Low on idle
+    }
+  };
+
+  // Install configuration
+  rmt_config(&cfg);
+  rmt_driver_install(cfg.channel, 0, 0);
 }
 
 void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size)
@@ -69,8 +99,8 @@ void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size)
   {
     // Extract individual pixels
     uint32_t color_com = (
-      frame_data[i] << 16) | // R byte
-      (frame_data[i + 1] << 8) | // G byte
+      frame_data[i + 1] << 16) | // G byte
+      (frame_data[i] << 8) | // R byte
       (frame_data[i + 2] // B byte
     );
 
@@ -84,25 +114,16 @@ void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size)
       bool pix_sta = color_com & (1 << (8 * 3 - j - 1));
 
       // Get a pointer to the current data
-      rmt_data_t *curr_dat = &lfh_rmt_data[
+      rmt_data_t *curr_dat = &lfh_rmt_tx_data[
         (i / 3) // Pixel index
         * (8 * 3) // Offset per pixel
         + j // Pixel's bit index
       ];
 
       // Apply durations
-      curr_dat->duration0 = pix_sta ? LFH_LED_DUR_T10_US : LFH_LED_DUR_T00_US;
-      curr_dat->duration1 = pix_sta ? LFH_LED_DUR_T11_US : LFH_LED_DUR_T01_US;
+      curr_dat->duration0 = pix_sta ? LFH_LED_DUR_T1H_US : LFH_LED_DUR_T0H_US;
+      curr_dat->duration1 = pix_sta ? LFH_LED_DUR_T1L_US : LFH_LED_DUR_T0L_US;
     }
-  }
-}
-
-void lfh_rmt_write_frame()
-{
-  if (!rmtWrite(lfh_rmt_handle, lfh_rmt_data, lfh_rmt_data_size))
-  {
-    dbg_log("Could not write data using rmt!\n");
-    return;
   }
 }
 
@@ -112,43 +133,84 @@ void lfh_rmt_write_frame()
 ============================================================================
 */
 
-static File lfh_framebuf;
+static File lfh_frame_file;
 static long lfh_last_render;
 static uint32_t lfh_current_frame;
-static uint8_t *frame_buf = NULL; //[frame_size] = { 0 };
+static uint16_t lfh_frame_num_blocks;
+static uint8_t *lfh_frame_ringbuf;
 
-Adafruit_NeoPixel strip(180, LFH_LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
+/**
+ * @brief Initialize the frame ringbuffer with off pixels
+ */
+void lfh_frame_ringbuf_init()
+{
+  for (int pixel = 0; pixel < lfh_frame_num_blocks * LFH_FRAME_RINGBUF_BS * LFH_FRAME_RINGBUF_SLOTS; pixel++)
+    lfh_frame_ringbuf[pixel] = 0;
+
+  dbg_log("Initialized the frame ringbuffer!\n");
+}
+
+/**
+ * @brief Allocate the frame ringbuffer based on the
+ * frame number of blocks
+ */
+void lfh_frame_ringbuf_alloc()
+{
+  size_t total_size = 
+    lfh_frame_num_blocks // Total number of blocks required
+    * LFH_FRAME_RINGBUF_SLOTS // This many times
+    * LFH_FRAME_RINGBUF_BS; // With this size per block
+
+  lfh_frame_ringbuf = (uint8_t *) malloc(total_size);
+  dbg_log("Allocated %" PRIu32 " bytes's for the frame ringbuffer!\n", total_size);
+}
+
+/**
+ * @brief Free the frame ringbuffer's memory
+ */
+void lfh_frame_ringbuf_dealloc()
+{
+  free (lfh_frame_ringbuf);
+}
 
 void lfh_init()
 {
   // Open frame onto local frame handle
-  sdh_open_frames_file("r", &lfh_framebuf);
+  sdh_open_frames_file("r", &lfh_frame_file);
 
   // Reset frame timing
   lfh_last_render = millis();
   lfh_current_frame = 0;
 
-  // Allocate RMT related resources
-  // lfh_rmt_alloc();
+  // Calculate the number of blocks a frame takes up (padded to fit)
+  lfh_frame_num_blocks = ceil((double) (vars_get_num_pixels() * 3.0) / (double) LFH_FRAME_RINGBUF_BS);
 
-  frame_buf = (uint8_t *) malloc(lfh_get_frame_size());
+  // Allocate and initialize frame ringbuffer
+  lfh_frame_ringbuf_alloc();
+  lfh_frame_ringbuf_init();
 
-  strip.begin();
-  strip.show();
+  // Read first frame so that there's always one more frame read than used
+  lfh_read_frame();
+
+  // Initialize RMT
+  lfh_rmt_init();
 }
 
 void lfh_deinit()
 {
-  if (lfh_framebuf) lfh_framebuf.close();
-  // lfh_rmt_dealloc();
+  // Close frame file
+  if (lfh_frame_file) lfh_frame_file.close();
 
-  if (frame_buf)
-    free(frame_buf);
+  // Dellocate frame ringbuffer
+  lfh_frame_ringbuf_dealloc();
+
+  // End RMT
+  lfh_rmt_dealloc();
 }
 
 /*
 ============================================================================
-                             Framebuffer write                              
+                             Frame file write                               
 ============================================================================
 */
 
@@ -192,6 +254,7 @@ bool lfh_init_file()
   return true;
 }
 
+// TODO: Write using the local file handle, create a mutex since this gets called async
 bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 {
   File handle;
@@ -237,25 +300,51 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 
 /*
 ============================================================================
-                             Framebuffer read                               
+                             Frame file read                                
 ============================================================================
 */
 
-bool lfh_read_frame(uint16_t frame_index, uint8_t *out_buf)
+bool lfh_read_frame()
 {
+
+  static size_t framebuf_slot = 0, frame_ind = 0;
+
   // Persistent buffer not available
-  if (!lfh_framebuf) return false;
+  if (!lfh_frame_file) return false;
 
-  uint16_t frame_size = lfh_get_frame_size();
+  // Go to start of current frame's block
+  if (!lfh_frame_file.seek(lfh_get_frame_size() * frame_ind))
+  {
+    dbg_log("LED frame %" PRIu32 " not available, resetting index!\n", frame_ind);
+    frame_ind = 0;
+    return lfh_read_frame();
+  }
 
-  // Could not seek frame start
-  if (!lfh_framebuf.seek(frame_size * frame_index)) return false;
+  // Read info buffer block by block
+  for (int i = 0; i < lfh_frame_num_blocks; i++)
+  {
+    // INFO: This will "overshoot" at the last frame, reading less bytes, as the
+    // INFO: byte-size is not always perfectly divisible by 512
+    lfh_frame_file.readBytes(
+      (char *) &lfh_frame_ringbuf[
+        framebuf_slot * LFH_FRAME_RINGBUF_BS * lfh_frame_num_blocks // Offset for current frame
+        + i * LFH_FRAME_RINGBUF_BS // Offset for current block of frame
+      ],
+      LFH_FRAME_RINGBUF_BS // One block
+    );
+  }
 
-  // Not enough bytes remaining
-  if (lfh_framebuf.available() < frame_size) return false;
+  // Advance to next slot, wrapping around
+  if (++framebuf_slot == LFH_FRAME_RINGBUF_SLOTS)
+    framebuf_slot = 0;
 
-  // Read frame into external buffer
-  lfh_framebuf.read(out_buf, frame_size);
+  // Advance to next frame
+  if (++frame_ind == vars_get_num_frames())
+  {
+    frame_ind = 0;
+    lfh_frame_file.seek(0);
+  }
+
   return true;
 }
 
@@ -286,83 +375,30 @@ uint16_t lfh_get_max_num_pixels()
 ============================================================================
 */
 
-/**
- * @brief Draw a frame to the pixels
- * 
- * @param frame_data Frame data buffer containing pixel color data
- * @param frame_size Size of one frame in bytes
- */
-void lfh_draw_frame2(uint8_t *frame_data, uint32_t frame_size)
-{
-  // Each pixel has to have three color components
-  if (frame_size % 3 != 0)
-  {
-    dbg_log("Invalid frame_size of %" PRIu32 " provided!\n", frame_size);
-    return;
-  }
-
-  // for (int i = 0; i < frame_size; i += 3)
-  //   dbg_log("(%" PRIu8 ", %" PRIu8 ", %" PRIu8 ")\n", frame_data[i], frame_data[i + 1], frame_data[i + 2]);
-
-  // Copy frame data into RMT bit-buffer and write it out
-  lfh_rmt_copy_frame(frame_data, frame_size);
-  lfh_rmt_write_frame();
-
-  dbg_log("Drawed %" PRIu32 "!\n", lfh_current_frame);
-}
-
-void lfh_draw_frame(uint8_t *frame_data, uint32_t frame_size)
-{
-  for (int i = 0; i < frame_size; i+=3)
-  {
-    uint8_t r = frame_data[i], g = frame_data[i + 1], b = frame_data[i + 2];
-    strip.setPixelColor(i / 3, r, g, b);
-  }
-  strip.show();
-}
+#define LHF_CONST_FETCH_TIME 1000
 
 void lfh_handle_frame()
 {
-  // Inter-frame delay timer
-  // INFO: Through this, the frame will take *at least* frame_dur, but may
-  // INFO: take longer, if the rendering itself takes longer
-  if (millis() - lfh_last_render < vars_get_frame_dur()) return;
-  lfh_last_render = millis();
+  static size_t ringbuf_slot = 0;
 
-  // Check if file is open, otherwise processing is probably paused
-  if (!lfh_framebuf) return;
+  // Read next frame in advance
+  // TODO: Invoke on second core for max. speed
+  if (!lfh_read_frame()) return;
 
-  uint32_t frame_size = vars_get_num_pixels() * 3;
-  long start = millis();
+  // Copy frame from ringbuffer into RMT data buffer by transforming it to bits
+  lfh_rmt_copy_frame(&lfh_frame_ringbuf[
+    ringbuf_slot * lfh_frame_num_blocks * LFH_FRAME_RINGBUF_BS
+  ], lfh_get_frame_size());
 
-  // File not big enough, thus no frame info available from here on onwards, reset
-  if (!lfh_framebuf.seek(frame_size * lfh_current_frame))
-  {
-    dbg_log("No next LED frame found, resetting!\n");
-    lfh_current_frame = 0;
-    return;
-  }
+  // Write out RMT data
+  rmt_write_items(RMT_CHANNEL_0, (rmt_item32_t *) lfh_rmt_tx_data, lfh_rmt_tx_data_size, true);
 
-  // File has not enough bytes remaining, thus no frame info available from here on onwards, reset
-  if (lfh_framebuf.available() < frame_size)
-  {
-    dbg_log("Not enough LED frame data remaining, resetting!\n");
-    lfh_last_render = millis() - vars_get_frame_dur();
-    lfh_current_frame = 0;
-    return;
-  }
+  // Inter-frame delay
+  static long last_render = millis();
+  while (millis() - last_render <= LHF_CONST_FETCH_TIME);
+  last_render = millis();
 
-  // Read frame into buffer and draw
-  lfh_framebuf.read(frame_buf, frame_size);
-  long stop = millis();
-  dbg_log("File read took around %ldms!\n", stop - start);
-
-  start = millis();
-  lfh_draw_frame(frame_buf, frame_size);
-  stop = millis();
-  dbg_log("Pixel draw took around %ldms!\n", stop - start);
-
-  // Advance to next frame
-  if (++lfh_current_frame == vars_get_num_frames())
-    lfh_current_frame = 0;
+  // Advance ringbuffer slot index, wrapping around
+  if (++ringbuf_slot == LFH_FRAME_RINGBUF_SLOTS)
+    ringbuf_slot = 0;
 }

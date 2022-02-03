@@ -560,11 +560,12 @@ bool wsockh_handle_single_packet_req(
 
     // Could not read frame
     uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
-    if (!lfh_read_frame(arg_16t_buf, frame_data_buf))
-    {
-      wsockh_send_resp(client, ERR_CANNOT_READ_FRAME);
-      return true;
-    }
+    // TODO: Re-implement!
+    // if (!lfh_read_frame(arg_16t_buf, frame_data_buf))
+    // {
+    //   wsockh_send_resp(client, ERR_CANNOT_READ_FRAME);
+    //   return true;
+    // }
 
     // Send frame data over to the client
     wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, frame_data_buf, sizeof(frame_data_buf));

@@ -14,6 +14,7 @@
 #include <FS.h>
 #include <esp32-hal-rmt.h>
 #include <Adafruit_NeoPixel.h>
+#include <driver/rmt.h>
 
 /*
 ============================================================================
@@ -25,12 +26,53 @@
 #define LFH_MAX_FRAMES 180
 #define LFH_MAX_PIXELS 1024
 
-// LED hardware config
+// Data signal output pin, connected to => DIN =>
 #define LFH_LED_DATA_PIN 13
-#define LFH_LED_DUR_T10_US 8
-#define LFH_LED_DUR_T11_US 4
-#define LFH_LED_DUR_T00_US 4
-#define LFH_LED_DUR_T01_US 8
+
+/*
+     <----T0H---><------T0L------->
+     +----------+                 +-----
+     |          |                 |
+     |          |                 |
+     |          |                 |
+     |          |                 |
+_____+          +-----------------+
+
+  T0H ... High time of signal representing 0
+  T0L ... Low time of signal representing 0
+*/
+#define LFH_LED_DUR_T0H_US 4
+#define LFH_LED_DUR_T0L_US 8
+
+/*
+     <------T1H-------><----T1L--->
+     +-----------------+          +-----
+     |                 |          |
+     |                 |          |
+     |                 |          |
+     |                 |          |
+_____+                 +----------+
+
+  T1H ... High time of signal representing 1
+  T1L ... Low time of signal representing 1
+*/
+#define LFH_LED_DUR_T1H_US 8
+#define LFH_LED_DUR_T1L_US 4
+
+// This divides the APB clock to be used as a timebase for RMT
+// APB should clock at 80 MHz, thus 8 would yield:
+// 80 MHz / 8 = 10 MHz, MHz = 1/t => t = 1 / (80 * 10^6 / 8) => 1 DUR ≙ 100 ns
+#define LFH_LED_CLK_DIV 8
+
+// INFO: Should be able to hold a full frame, when MAX_PIXELS has been reached
+// INFO: Will be read in blocks of 512 bytes
+#define LFH_FREAD_BUF_SIZE (512 * 6)
+
+// How many slots the ringbuffer storing frame data should have
+#define LFH_FRAME_RINGBUF_SLOTS 2
+
+// Block size of frame ringbuffer
+#define LFH_FRAME_RINGBUF_BS 512
 
 /*
 ============================================================================
@@ -50,7 +92,7 @@ void lfh_deinit();
 
 /*
 ============================================================================
-                             Framebuffer write                              
+                             Frame file write                               
 ============================================================================
 */
 
@@ -64,7 +106,7 @@ void lfh_deinit();
 bool lfh_init_file();
 
 /**
- * @brief Write the data of a frame to the persistent frame buffer
+ * @brief Write the data of a frame to the persistent frame file
  * 
  * @param frame_index Zero based index of the frame
  * @param frame_data Data to be written
@@ -76,20 +118,17 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data);
 
 /*
 ============================================================================
-                             Framebuffer read                               
+                             Frame file read                                
 ============================================================================
 */
 
 /**
- * @brief Read the frame from persistent data into a buffer
- * 
- * @param frame_index Zero based index of the frame
- * @param out_buf Buffer to store data in
+ * @brief Read the frame from file at current location into the ringbuffer
  * 
  * @return true Successfully read into buffer
  * @return false Data not available atm
  */
-bool lfh_read_frame(uint16_t frame_index, uint8_t *out_buf);
+bool lfh_read_frame();
 
 /*
 ============================================================================
