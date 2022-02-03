@@ -138,6 +138,7 @@ static long lfh_last_render;
 static uint32_t lfh_current_frame;
 static uint16_t lfh_frame_num_blocks;
 static uint8_t *lfh_frame_ringbuf;
+static bool lfh_file_inuse = false;
 
 /**
  * @brief Initialize the frame ringbuffer with off pixels
@@ -208,6 +209,24 @@ void lfh_deinit()
   lfh_rmt_dealloc();
 }
 
+void lfh_pause()
+{
+  // Wait for file use completion
+  while (lfh_file_inuse);
+
+  // Close frame file
+  if (lfh_frame_file) lfh_frame_file.close();
+  dbg_log("Paused frame processing!\n");
+}
+
+void lfh_resume()
+{
+  // Open frame onto local frame handle
+  sdh_open_frames_file("r", &lfh_frame_file);
+
+  dbg_log("Resumed frame processing!\n");
+}
+
 /*
 ============================================================================
                              Frame file write                               
@@ -254,7 +273,6 @@ bool lfh_init_file()
   return true;
 }
 
-// TODO: Write using the local file handle, create a mutex since this gets called async
 bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data)
 {
   File handle;
@@ -312,6 +330,8 @@ bool lfh_read_frame()
   // Persistent buffer not available
   if (!lfh_frame_file) return false;
 
+  lfh_file_inuse = true;
+
   // Go to start of current frame's block
   if (!lfh_frame_file.seek(lfh_get_frame_size() * frame_ind))
   {
@@ -333,6 +353,8 @@ bool lfh_read_frame()
       LFH_FRAME_RINGBUF_BS // One block
     );
   }
+
+  lfh_file_inuse = false;
 
   // Advance to next slot, wrapping around
   if (++framebuf_slot == LFH_FRAME_RINGBUF_SLOTS)
@@ -375,7 +397,7 @@ uint16_t lfh_get_max_num_pixels()
 ============================================================================
 */
 
-#define LHF_CONST_FETCH_TIME 1000
+#define LHF_CONST_FRAME_TIME 10
 
 void lfh_handle_frame()
 {
@@ -395,7 +417,7 @@ void lfh_handle_frame()
 
   // Inter-frame delay
   static long last_render = millis();
-  while (millis() - last_render <= LHF_CONST_FETCH_TIME);
+  while (millis() - last_render <= LHF_CONST_FRAME_TIME);
   last_render = millis();
 
   // Advance ringbuffer slot index, wrapping around

@@ -358,8 +358,18 @@ bool wsockh_handle_multi_packet_req(
       return true;
     }
 
-    // Cancel frame processing
-    // lfh_deinit();
+    // Create timeout to resume the LFH
+    static int toh_handle = -1;
+    if (!toh_is_active(toh_handle))
+    {
+      toh_handle = toh_create_timeout(WSOCKH_SET_FRAME_TIMEOUT, lfh_resume);
+
+      // Cancel frame processing
+      lfh_pause();
+    }
+
+    // Re-set timeout on every frame
+    toh_reset(toh_handle);
 
     // Could not write into file
     if (!lfh_write_frame(arg_16t_buf, &data[3]))
@@ -367,9 +377,6 @@ bool wsockh_handle_multi_packet_req(
       wsockh_send_resp(client, ERR_NO_SD_ACC);
       return true;
     }
-
-    // Restart frame processing
-    // lfh_init();
 
     wsockh_send_resp(client, SUCCESS_NO_DATA);
     return true;

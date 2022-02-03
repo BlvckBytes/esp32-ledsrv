@@ -90,6 +90,16 @@ void lfh_init();
  */
 void lfh_deinit();
 
+/**
+ * @brief Pauses frame processing
+ */
+void lfh_pause();
+
+/**
+ * @brief Resumes frame processing
+ */
+void lfh_resume();
+
 /*
 ============================================================================
                              Frame file write                               

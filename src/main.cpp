@@ -11,6 +11,7 @@
 #include <web_socket_handler.h>
 #include <sd_handler.h>
 #include <variable_store.h>
+#include <timeout_handler.h>
 
 /*
 ============================================================================
@@ -67,4 +68,7 @@ void loop()
 
   // Handle actual frame drawing
   lfh_handle_frame();
+
+  // Check for timeouts
+  toh_check();
 }

@@ -18,6 +18,7 @@
 #include <variable_store.h>
 #include <reboot_handler.h>
 #include <event_handler.h>
+#include <timeout_handler.h>
 
 /*
 ============================================================================
@@ -33,6 +34,10 @@
 
 // Reboot opcode
 #define WSOCKH_REB_DEL 5000
+
+// Timeout until drawing is resumed after a frame-set
+// WARNING: Don't choose a too-low value to avoid race-conditions
+#define WSOCKH_SET_FRAME_TIMEOUT 2000
 
 /*
 ============================================================================
