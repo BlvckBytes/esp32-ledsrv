@@ -4,7 +4,7 @@ Control addressable LEDs using an ESP32 and serve local frame requests.
 
 ## Current status
 
-Working on the absolute basics, trying to get a clean foundation to work off in the future.
+Trying to properly implement async multi-client communication, which seems very hard...
 
 ## Goals
 
@@ -23,6 +23,7 @@ Working on the absolute basics, trying to get a clean foundation to work off in 
 - [X] SD card JSON for variables
 - [X] SD card BINARY for frames
 - [ ] SD card BINARY file dump over socket (mostly for debugging)
+- [ ] Fix fast requests = message skip
 - [X] Add reboot opcode
 - [ ] More granularity within dbg_log than just on/off
 - [ ] Actually implement frame drawing (fastled or diy)
