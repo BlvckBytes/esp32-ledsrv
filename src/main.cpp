@@ -8,7 +8,7 @@
 #include <wifi_handler.h>
 #include <reboot_handler.h>
 #include <web_server_handler.h>
-#include <web_socket_handler.h>
+#include <wsockh/web_socket_handler.h>
 #include <sd_handler.h>
 #include <variable_store.h>
 #include <timeout_handler.h>

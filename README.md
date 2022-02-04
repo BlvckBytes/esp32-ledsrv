@@ -12,25 +12,25 @@ Trying to properly implement async multi-client communication, which seems very 
 - [x] Connect to WiFi
 - [x] Automatically reconnect on connection losses
 - [x] Open AP when STA connect failed multiple times in a row (but keep on trying)
-- [X] Binary WebSocket server
-- [X] Request handler switching on OpCodes
-- [X] Serving write requests
-- [X] Serving read requests
-- [X] Add hostname as a store variable
-- [X] Add num_pixels as a store variable
-- [X] Central event system
-- [X] Frame/Pixel handler
-- [X] SD card JSON for variables
-- [X] SD card BINARY for frames
+- [x] Binary WebSocket server
+- [x] Request handler switching on OpCodes
+- [x] Serving write requests
+- [x] Serving read requests
+- [x] Add hostname as a store variable
+- [x] Add num_pixels as a store variable
+- [x] Central event system
+- [x] Frame/Pixel handler
+- [x] SD card JSON for variables
+- [x] SD card BINARY for frames
 - [ ] SD card BINARY file dump over socket (mostly for debugging)
 - [ ] Fix fast requests = message skip
-- [X] Add reboot opcode
+- [x] Add reboot opcode
 - [ ] More granularity within dbg_log than just on/off
 - [ ] Actually implement frame drawing (fastled or diy)
-- [X] Add dev_name (SSID) pattern validation
-- [X] SD card hotplug
+- [x] Add dev_name (SSID) pattern validation
+- [x] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots
-- [X] Cancel processing invalid (segmented) requests ASAP
+- [x] Cancel processing invalid (segmented) requests ASAP
 - [ ] Client authentication
 - [ ] Protect against MITM
 

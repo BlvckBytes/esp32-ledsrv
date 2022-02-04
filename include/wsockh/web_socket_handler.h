@@ -8,7 +8,7 @@
 */
 
 #include <ESPAsyncWebServer.h>
-#include <web_socket_handler.h>
+#include <wsockh/web_socket_handler.h>
 #include <led_frame_handler.h>
 #include <web_server_handler.h>
 #include <comm_opcode.h>
@@ -20,6 +20,27 @@
 #include <event_handler.h>
 #include <timeout_handler.h>
 
+#include <wsockh/wsockh_utils.h>
+#include <wsockh/wsockh_notifier.h>
+
+// Request responders
+#include <wsockh/responders/wsockh_set_frame_dur.h>
+#include <wsockh/responders/wsockh_set_num_frames_num_pixels.h>
+#include <wsockh/responders/wsockh_set_brightness.h>
+#include <wsockh/responders/wsockh_set_evt_sub.h>
+#include <wsockh/responders/wsockh_set_frame_cont.h>
+#include <wsockh/responders/wsockh_set_wifi_cred.h>
+#include <wsockh/responders/wsockh_set_dev_name.h>
+#include <wsockh/responders/wsockh_get_frame_dur.h>
+#include <wsockh/responders/wsockh_get_num_frames_num_pixels.h>
+#include <wsockh/responders/wsockh_get_frame_slots.h>
+#include <wsockh/responders/wsockh_get_frame_cont.h>
+#include <wsockh/responders/wsockh_get_brightness.h>
+#include <wsockh/responders/wsockh_get_wifi_ssid.h>
+#include <wsockh/responders/wsockh_get_sd_size.h>
+#include <wsockh/responders/wsockh_get_dev_name.h>
+#include <wsockh/responders/wsockh_cmd_reboot.h>
+
 /*
 ============================================================================
                                   Macros                                    
@@ -30,14 +51,6 @@
 #define WSOCKH_PATH "/ws"
 #define WSOCKH_REQUEST_REMAINDERS_LEN 8
 #define WSOCKH_MSGBUF_SIZE 4096
-#define WSOCKH_STRARGBUF_SIZE 8
-
-// Reboot opcode
-#define WSOCKH_REB_DEL 5000
-
-// Timeout until drawing is resumed after a frame-set
-// WARNING: Don't choose a too-low value to avoid race-conditions
-#define WSOCKH_SET_FRAME_TIMEOUT 2000
 
 /*
 ============================================================================
@@ -55,59 +68,13 @@ typedef struct
 } wsockh_req_remainder_t;
 
 /**
- * @brief Represents the request of a client targetting a specific frame,
- * used as a callback object
+ * @brief Used to represend individual request handler functions
  */
-typedef struct
-{
-  AsyncWebSocketClient *client;
-  uint16_t frame_index;
-} wsockh_frame_cont_req_t;
-
-/**
- * @brief Allocates a frame content request struct on the heap
- * 
- * @param client Request issuer
- * @param frame_index Index of target frame
- */
-wsockh_frame_cont_req_t *wsockh_alloc_frame_cont_req(AsyncWebSocketClient *client, uint16_t frame_index);
-
-/**
- * @brief Deallocate a frame content request structure
- * 
- * @param data Data to free up
- */
-void wsockh_dealloc_frame_cont_req(wsockh_frame_cont_req_t *data);
-
-typedef struct
-{
-  AsyncWebSocketClient *client;
-  uint16_t frame_index;
-  uint8_t *content;
-} wsockh_frame_cont_set_t;
-
-/**
- * @brief Allocates a frame content set struct on the heap
- * 
- * @param client Request issuer
- * @param frame_index Index of the frame
- * @param content Content of the frame
- * @param content_len Length of content
- * @return wsockh_frame_cont_set_t* 
- */
-wsockh_frame_cont_set_t *wsockh_alloc_wsockh_frame_cont_set(
+typedef void (*wsockh_req_handler_t)(
   AsyncWebSocketClient *client,
-  uint16_t frame_index,
-  uint8_t *content,
-  uint16_t content_len
+  uint8_t *data,
+  size_t len
 );
-
-/**
- * @brief Deallocate a frame content set structure
- * 
- * @param data Data to free up
- */
-void wsockh_dealloc_wsockh_frame_cont_set(wsockh_frame_cont_set_t *data);
 
 /*
 ============================================================================

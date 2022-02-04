@@ -15,13 +15,13 @@ typedef enum {
   GET_FRAME_DUR                 = 0x80, //      y          R    /
   GET_NUM_FRAMES_NUM_PIXELS     = 0x81, //      y          R    /
   GET_FRAME_SLOTS               = 0x82, //      y          R    /
-  GET_FRAME_CONT                = 0x83, //      n          R    <frame_index uint_16t>
+  GET_FRAME_CONT                = 0x83, //      y          R    <frame_index uint_16t>
   GET_BRIGHTNESS                = 0x84, //      y          R    /
   GET_WIFI_SSID                 = 0x85, //      y          R    /
   GET_SD_SIZE                   = 0x86, //      y          R    /
   GET_DEV_NAME                  = 0x87, //      y          R    /
 
-  REBOOT                        = 0xFF, //      y          /    /
+  CMD_REBOOT                    = 0xFF, //      y          /    /
 } CommOpCode;
 
 #endif

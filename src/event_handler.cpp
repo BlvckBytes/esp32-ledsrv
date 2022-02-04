@@ -8,6 +8,7 @@
 
 static EventHandlerRegistration evh_regs[EVH_CLIENTBUF_SIZE];
 static evh_notifier_t evh_notifier = 0;
+static AsyncWebSocket *evh_socket = 0;
 
 /**
  * @brief Find a non-occupied slot for a new event registration
@@ -98,9 +99,10 @@ bool evh_exists_client(uint32_t client_id)
 ============================================================================
 */
 
-void evh_set_notifier(evh_notifier_t notifier)
+void evh_set_notifier(AsyncWebSocket *socket, evh_notifier_t notifier)
 {
   evh_notifier = notifier;
+  evh_socket = socket;
 }
 
 /*
@@ -109,10 +111,10 @@ void evh_set_notifier(evh_notifier_t notifier)
 ============================================================================
 */
 
-bool evh_fire_event(uint32_t *cause_client_id, CommEventCode event)
+bool evh_fire_event(long cause_client_id, CommEventCode event)
 {
-  // No notifier set
-  if (!evh_notifier) return false;
+  // No notifier set or socket not available
+  if (!evh_notifier || !evh_socket) return false;
 
   for (int i = 0; i < EVH_CLIENTBUF_SIZE; i++)
   {
@@ -125,10 +127,10 @@ bool evh_fire_event(uint32_t *cause_client_id, CommEventCode event)
     if (!reg->subscriptions[event]) continue;
 
     // Don't send events to their causing client (if provided)
-    if (cause_client_id != 0 && reg->client_id == *cause_client_id) continue;
+    if (cause_client_id != -1 && reg->client_id == cause_client_id) continue;
 
     // Notify using notifier callback
-    evh_notifier(reg->client_id, event);
+    evh_notifier(evh_socket, reg->client_id, event);
     dbg_log("Notified client %" PRIu32 " of event %" PRIu8 "!\n", reg->client_id, (uint8_t) event);
   }
 

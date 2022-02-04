@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <comm_eventcode.h>
 #include <dbg_log.h>
+#include <AsyncWebSocket.h>
 
 /*
 ============================================================================
@@ -31,7 +32,7 @@ typedef struct {
   int subscriptions[CEV_NUM_EVENTS] = { 0 };
 } EventHandlerRegistration;
 
-typedef void (*evh_notifier_t)(uint32_t, CommEventCode);
+typedef void (*evh_notifier_t)(AsyncWebSocket*, uint32_t, CommEventCode);
 
 /*
 ============================================================================
@@ -78,9 +79,10 @@ bool evh_exists_client(uint32_t client_id);
  * @brief Set the notifier function that'll take care of actually
  * sending events to clients
  * 
+ * @param sock Socket connection reference
  * @param notifier Notifier callback function
  */
-void evh_set_notifier(evh_notifier_t notifier);
+void evh_set_notifier(AsyncWebSocket *sock, evh_notifier_t notifier);
 
 /*
 ============================================================================
@@ -91,13 +93,13 @@ void evh_set_notifier(evh_notifier_t notifier);
 /**
  * @brief Fire an event to be broadcasted
  * 
- * @param cause_client_id ID of the causing client, null if no client was involved
+ * @param cause_client_id ID of the causing client, -1 if no client was involved
  * @param event Event to fire
  * 
  * @return true Event fired
  * @return false No notifier set beforehand
  */
-bool evh_fire_event(uint32_t *cause_client_id, CommEventCode event);
+bool evh_fire_event(long cause_client_id, CommEventCode event);
 
 /*
 ============================================================================
