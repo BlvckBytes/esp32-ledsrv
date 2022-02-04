@@ -617,6 +617,13 @@ bool wsockh_handle_single_packet_req(
       return true;
     }
 
+    // Create timeout to resume the LFH
+    static int toh_handle = -1;
+    if (!toh_is_active(toh_handle))
+    {
+      toh_handle = toh_create_timeout(WSOCKH_SET_FRAME_TIMEOUT, lfh_resume);
+    }
+
     // Pause frame processing
     lfh_pause([](void *arg)
     {
@@ -625,9 +632,6 @@ bool wsockh_handle_single_packet_req(
       // Read frame content into local buffer
       uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
       bool ret = lfh_read_frame_content(rd->frame_index, frame_data_buf);
-
-      // Resume drawing
-      lfh_resume();
 
       // Could not fetch the requested data
       if (!ret)
@@ -642,6 +646,9 @@ bool wsockh_handle_single_packet_req(
       // Free request
       wsockh_dealloc_frame_cont_req(rd);
     }, wsockh_alloc_frame_cont_req(client, arg_16t_buf));
+
+    // Re-set timeout on every frame
+    toh_reset(toh_handle);
 
     return true;
   }
