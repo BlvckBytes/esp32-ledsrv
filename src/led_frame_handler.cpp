@@ -138,7 +138,9 @@ static long lfh_last_render;
 static uint32_t lfh_current_frame;
 static uint16_t lfh_frame_num_blocks;
 static uint8_t *lfh_frame_ringbuf;
-static bool lfh_file_inuse = false;
+static lfh_paused_t lfh_pause_req = 0;
+static void *lfh_pause_req_arg = 0;
+static bool lfh_is_paused = false;
 
 /**
  * @brief Initialize the frame ringbuffer with off pixels
@@ -209,21 +211,29 @@ void lfh_deinit()
   lfh_rmt_dealloc();
 }
 
-void lfh_pause()
+void lfh_pause(lfh_paused_t done, void *arg)
 {
-  // Wait for file use completion
-  while (lfh_file_inuse);
+  // Already paused, instantly call
+  if (lfh_is_paused)
+  {
+    done(arg);
+    return;
+  }
 
-  // Close frame file
-  if (lfh_frame_file) lfh_frame_file.close();
-  dbg_log("Paused frame processing!\n");
+  // Mark for request
+  // WARNING: If two requests are tight enough that they both have
+  // WARNING: to wait for pause, one will override the other.
+  lfh_pause_req = done;
+  lfh_pause_req_arg = arg;
 }
 
 void lfh_resume()
 {
+  lfh_pause_req = 0;
+  lfh_is_paused = false;
+
   // Open frame onto local frame handle
   sdh_open_frames_file("r", &lfh_frame_file);
-
   dbg_log("Resumed frame processing!\n");
 }
 
@@ -330,8 +340,6 @@ bool lfh_read_frame()
   // Persistent buffer not available
   if (!lfh_frame_file) return false;
 
-  lfh_file_inuse = true;
-
   // Go to start of current frame's block
   if (!lfh_frame_file.seek(lfh_get_frame_size() * frame_ind))
   {
@@ -354,8 +362,6 @@ bool lfh_read_frame()
     );
   }
 
-  lfh_file_inuse = false;
-
   // Advance to next slot, wrapping around
   if (++framebuf_slot == LFH_FRAME_RINGBUF_SLOTS)
     framebuf_slot = 0;
@@ -367,6 +373,39 @@ bool lfh_read_frame()
     lfh_frame_file.seek(0);
   }
 
+  // Process pause request
+  if (lfh_pause_req)
+  {
+    // Close frame file
+    if (lfh_frame_file) lfh_frame_file.close();
+    dbg_log("Paused frame processing!\n");
+
+    // Set local flag
+    lfh_is_paused = true;
+
+    // Invoke callback
+    lfh_pause_req(lfh_pause_req_arg);
+  }
+
+  return true;
+}
+
+bool lfh_read_frame_content(uint16_t frame_index, uint8_t *data_buf)
+{
+  // Could not open file
+  if (!sdh_open_frames_file("r", &lfh_frame_file)) return false;
+
+  // Start of frame out of range
+  if (!lfh_frame_file.seek(lfh_get_frame_size() * frame_index)) return false;
+
+  // Not enough data for a full frame
+  if (lfh_frame_file.available() < lfh_get_frame_size()) return false;
+
+  // Read info buffer
+  lfh_frame_file.readBytes((char *) data_buf, lfh_get_frame_size());
+
+  // Close file, success
+  lfh_frame_file.close();
   return true;
 }
 

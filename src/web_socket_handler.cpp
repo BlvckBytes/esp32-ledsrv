@@ -4,12 +4,60 @@ AsyncWebSocket wsockh_ws(WSOCKH_PATH);
 
 /*
 ============================================================================
+                                   Types                                    
+============================================================================
+*/
+
+wsockh_frame_cont_req_t *wsockh_alloc_frame_cont_req(AsyncWebSocketClient *client, uint16_t frame_index)
+{
+  wsockh_frame_cont_req_t *req = (wsockh_frame_cont_req_t *) malloc(sizeof(wsockh_frame_cont_req_t));
+  req->client = client;
+  req->frame_index = frame_index;
+  return req;
+}
+
+void wsockh_dealloc_frame_cont_req(wsockh_frame_cont_req_t *data)
+{
+  free(data);
+}
+
+wsockh_frame_cont_set_t *wsockh_alloc_wsockh_frame_cont_set(
+  AsyncWebSocketClient *client,
+  uint16_t frame_index,
+  uint8_t *content,
+  uint16_t content_len
+)
+{
+  wsockh_frame_cont_set_t *req = (wsockh_frame_cont_set_t *) malloc(sizeof(wsockh_frame_cont_set_t));
+  req->client = client;
+  req->frame_index = frame_index;
+
+  req->content = (uint8_t *) malloc(content_len);
+  memcpy(req->content, content, content_len);
+
+  return req;
+}
+
+/**
+ * @brief Deallocate a frame content set structure
+ * 
+ * @param data Data to free up
+ */
+void wsockh_dealloc_wsockh_frame_cont_set(wsockh_frame_cont_set_t *data)
+{
+  free(data->content);
+  data->content = NULL;
+  free(data);
+}
+
+/*
+============================================================================
                          Request remainder handling                         
 ============================================================================
 */
 
 // Request remainder buffer
-static AsyncWebSocketRequestRemainder wsockh_request_remainders[WSOCKH_REQUEST_REMAINDERS_LEN];
+static wsockh_req_remainder_t wsockh_request_remainders[WSOCKH_REQUEST_REMAINDERS_LEN];
 static uint8_t wsockh_request_remainder_pointer = 0;
 
 /**
@@ -25,7 +73,7 @@ bool wsockh_is_request_terminated(AsyncWebSocketClient *client, size_t read_len)
 {
   for (int i = 0; i < WSOCKH_REQUEST_REMAINDERS_LEN; i++)
   {
-    AsyncWebSocketRequestRemainder *tar = &wsockh_request_remainders[i];
+    wsockh_req_remainder_t *tar = &wsockh_request_remainders[i];
 
     // Search on
     if (tar->client != client) continue;
@@ -58,7 +106,7 @@ void wsockh_terminate_request(AsyncWebSocketClient *client, AwsFrameInfo *info, 
   if (remainder <= 0) return;
 
   // Register remainder
-  AsyncWebSocketRequestRemainder rem = { client, remainder };
+  wsockh_req_remainder_t rem = { client, remainder };
 
   // Add to ringbuffer
   wsockh_request_remainders[wsockh_request_remainder_pointer] = rem;
@@ -352,7 +400,8 @@ bool wsockh_handle_multi_packet_req(
     }
 
     // Check if full frame is provided (frame_size + opcode + uint16_t arg)
-    if (len != lfh_get_frame_size() + 1 + 2)
+    uint16_t frame_size = lfh_get_frame_size();
+    if (len != frame_size + 1 + 2)
     {
       wsockh_send_resp(client, ERR_NUM_PIXEL_MISMATCH);
       return true;
@@ -363,22 +412,25 @@ bool wsockh_handle_multi_packet_req(
     if (!toh_is_active(toh_handle))
     {
       toh_handle = toh_create_timeout(WSOCKH_SET_FRAME_TIMEOUT, lfh_resume);
-
-      // Cancel frame processing
-      lfh_pause();
     }
+
+    // Pause frame processing
+    lfh_pause([](void *arg) {
+      wsockh_frame_cont_set_t *rd = (wsockh_frame_cont_set_t *) arg;
+
+      // Could not write into file
+      if (!lfh_write_frame(rd->frame_index, rd->content))
+      {
+        wsockh_send_resp(rd->client, ERR_NO_SD_ACC);
+        return;
+      }
+
+      wsockh_send_resp(rd->client, SUCCESS_NO_DATA);
+      wsockh_dealloc_wsockh_frame_cont_set(rd);
+    }, wsockh_alloc_wsockh_frame_cont_set(client, arg_16t_buf, &data[3], frame_size));
 
     // Re-set timeout on every frame
     toh_reset(toh_handle);
-
-    // Could not write into file
-    if (!lfh_write_frame(arg_16t_buf, &data[3]))
-    {
-      wsockh_send_resp(client, ERR_NO_SD_ACC);
-      return true;
-    }
-
-    wsockh_send_resp(client, SUCCESS_NO_DATA);
     return true;
   }
 
@@ -565,17 +617,32 @@ bool wsockh_handle_single_packet_req(
       return true;
     }
 
-    // Could not read frame
-    uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
-    // TODO: Re-implement!
-    // if (!lfh_read_frame(arg_16t_buf, frame_data_buf))
-    // {
-    //   wsockh_send_resp(client, ERR_CANNOT_READ_FRAME);
-    //   return true;
-    // }
+    // Pause frame processing
+    lfh_pause([](void *arg)
+    {
+      wsockh_frame_cont_req_t *rd = (wsockh_frame_cont_req_t *) arg;
 
-    // Send frame data over to the client
-    wsockh_send_resp(client, SUCCESS_DATA_FOLLOWS, frame_data_buf, sizeof(frame_data_buf));
+      // Read frame content into local buffer
+      uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
+      bool ret = lfh_read_frame_content(rd->frame_index, frame_data_buf);
+
+      // Resume drawing
+      lfh_resume();
+
+      // Could not fetch the requested data
+      if (!ret)
+      {
+        wsockh_send_resp(rd->client, ERR_CANNOT_READ_FRAME);
+        return;
+      }
+
+      // Send frame data over to the client
+      wsockh_send_resp(rd->client, SUCCESS_DATA_FOLLOWS, frame_data_buf, sizeof(frame_data_buf));
+
+      // Free request
+      wsockh_dealloc_frame_cont_req(rd);
+    }, wsockh_alloc_frame_cont_req(client, arg_16t_buf));
+
     return true;
   }
 

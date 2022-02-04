@@ -76,6 +76,14 @@ _____+                 +----------+
 
 /*
 ============================================================================
+                                  Types                                     
+============================================================================
+*/
+
+typedef void (*lfh_paused_t)(void *arg);
+
+/*
+============================================================================
                                Basic control                                
 ============================================================================
 */
@@ -92,8 +100,11 @@ void lfh_deinit();
 
 /**
  * @brief Pauses frame processing
+ * 
+ * @param done Callback for right after pausing
+ * @param arg Argument passed to the callback
  */
-void lfh_pause();
+void lfh_pause(lfh_paused_t done, void *arg);
 
 /**
  * @brief Resumes frame processing
@@ -139,6 +150,17 @@ bool lfh_write_frame(uint16_t frame_index, uint8_t *frame_data);
  * @return false Data not available atm
  */
 bool lfh_read_frame();
+
+/**
+ * @brief Read the contents of a frame into the provided buffer
+ * 
+ * @param frame_index Index of the frame
+ * @param data_buf Buffer to read into
+ * 
+ * @return true Frame contents have been written to the buffer
+ * @return false Could not read the frame contents
+ */
+bool lfh_read_frame_content(uint16_t frame_index, uint8_t *data_buf);
 
 /*
 ============================================================================
