@@ -102,6 +102,10 @@ bool lfh_frame_file_write(uint16_t frame_index, uint8_t *frame_data)
 
 bool lfh_frame_file_read(uint16_t frame_index, uint8_t *out_buf)
 {
+  // Open file if in pause mode
+  if (lfh_is_paused())
+    lfh_frame_file_open();
+
   // Persistent buffer not available
   if (!lfh_frame_file) return false;
 
@@ -122,6 +126,10 @@ bool lfh_frame_file_read(uint16_t frame_index, uint8_t *out_buf)
     lfh_frame_file.readBytes((char *) &out_buf[buf_offs], curr_sz);
     buf_offs += curr_sz;
   }
+
+  // Close file if in pause mode
+  if (lfh_is_paused())
+    lfh_frame_file_close();
 
   // Process pause queue
   if (lfh_pause_check())
