@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include <dbg_log.h>
 #include <timeout_handler.h>
-#include <led_frame_handler.h>
+#include <lfh/lfh_frame_file.h>
 
 // Timeout until drawing is resumed after a frame-set
 // WARNING: Don't choose a too-low value to avoid race-conditions

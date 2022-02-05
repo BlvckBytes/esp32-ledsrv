@@ -13,7 +13,11 @@ int toh_create_timeout(uint32_t duration_ms, callback cb)
     cb
   };
 
-  toh_registry_index++;
+  dbg_log("Created timeout with handle %" PRIu16 " and duration %" PRIu32 "!\n", toh_registry_index, duration_ms);
+
+  // Wrap index
+  if (toh_registry_index++ == TOH_REGISTRY_SLOTS) toh_registry_index = 0;
+
   return recv_index;
 }
 
@@ -33,14 +37,14 @@ bool toh_is_active(int handle)
 
 void toh_check()
 {
-  for (int i = 0; i < TOH_REGISTRY_SLOTS; i++)
+  for (uint16_t i = 0; i < TOH_REGISTRY_SLOTS; i++)
   {
     TimeoutEntry *entry = &toh_registry[i];
 
     if (entry->duration == 0 || entry->stamp > millis()) continue;
 
     if (entry->cb) entry->cb();
-    dbg_log("Disabled timeout with handle %d and duration %" PRIu32 "!\n", i, entry->duration);
+    dbg_log("Disabled timeout with handle %" PRIu16 " and duration %" PRIu32 "!\n", i, entry->duration);
     entry->duration = 0;
   }
 }

@@ -30,21 +30,14 @@ void wsockh_get_frame_cont(
     return;
   }
 
-  // Create timeout to resume the LFH
-  static int toh_handle = -1;
-  if (!toh_is_active(toh_handle))
-  {
-    toh_handle = toh_create_timeout(WSOCKH_GET_FRAME_TIMEOUT, lfh_resume);
-  }
-
   // Pause frame processing
-  lfh_pause([](void *arg)
+  lfh_pause_register([](void *arg)
   {
     wsockh_frame_cont_req_t *rd = (wsockh_frame_cont_req_t *) arg;
 
     // Read frame content into local buffer
-    uint8_t frame_data_buf[lfh_get_frame_size()] = { 0 };
-    bool ret = lfh_read_frame_content(rd->frame_index, frame_data_buf);
+    uint8_t frame_data_buf[vars_get_num_pixels() * 3] = { 0 };
+    bool ret = lfh_frame_file_read(rd->frame_index, frame_data_buf);
 
     // Could not fetch the requested data
     if (!ret)
@@ -59,7 +52,4 @@ void wsockh_get_frame_cont(
     // Free request
     wsockh_dealloc_frame_cont_req(rd);
   }, wsockh_alloc_frame_cont_req(client, frame_index));
-
-  // Re-set timeout on every frame
-  toh_reset(toh_handle);
 }

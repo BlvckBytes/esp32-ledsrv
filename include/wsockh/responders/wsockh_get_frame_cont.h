@@ -4,8 +4,8 @@
 #include <AsyncWebSocket.h>
 #include <inttypes.h>
 #include <wsockh/wsockh_utils.h>
-#include <led_frame_handler.h>
-#include <timeout_handler.h>
+#include <lfh/lfh_pause.h>
+#include <lfh/lfh_frame_file.h>
 
 // Timeout until drawing is resumed after a frame-get
 // WARNING: Don't choose a too-low value to avoid race-conditions

@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <variable_store.h>
 #include <wsockh/wsockh_utils.h>
-#include <led_frame_handler.h>
+#include <lfh/led_frame_handler.h>
 
 void wsockh_get_num_frames_num_pixels(
   AsyncWebSocketClient *client,

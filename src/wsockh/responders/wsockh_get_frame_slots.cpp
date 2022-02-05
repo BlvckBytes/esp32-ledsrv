@@ -6,5 +6,5 @@ void wsockh_get_frame_slots(
   size_t len
 )
 {
-  wsockh_send_arg_numeric(client, lfh_get_frame_slots(), 2);
+  wsockh_send_arg_numeric(client, lfh_frame_file_get_slots(), 2);
 }
