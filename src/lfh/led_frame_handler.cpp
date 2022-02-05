@@ -55,18 +55,6 @@ void lfh_init()
   lfh_rmt_init();
 }
 
-void lfh_deinit()
-{
-  // Close frame file
-  lfh_frame_file_close();
-
-  // Dellocate frame ringbuffer
-  lfh_frame_ringbuf_dealloc();
-
-  // End RMT
-  lfh_rmt_dealloc();
-}
-
 /*
 ============================================================================
                              Framebuffer info                               
@@ -104,8 +92,6 @@ bool lfh_read_frame()
 
   return true;
 }
-
-#define LHF_CONST_FRAME_TIME 10
 
 void lfh_handle_frame()
 {

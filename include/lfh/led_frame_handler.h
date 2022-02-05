@@ -22,15 +22,13 @@
 ============================================================================
 */
 
-// WARNING: This value needs to be calculated at runtime depending on the SD remaining size, clamped to a max of uint16_t
-#define LFH_MAX_FRAMES 180
 #define LFH_MAX_PIXELS 1024
 
 // How many slots the ringbuffer storing frame data should have
 #define LFH_FRAME_RINGBUF_SLOTS 2
 
-// Block size of frame ringbuffer
-#define LFH_FRAME_RINGBUF_BS 512
+// INFO: Hack test value, for now...
+#define LHF_CONST_FRAME_TIME 10
 
 /*
 ============================================================================
@@ -42,11 +40,6 @@
  * @brief Initialize the frame handlers dependencies
  */
 void lfh_init();
-
-/**
- * @brief Deinitialize the frame buffer and close it's dependencies
- */
-void lfh_deinit();
 
 /*
 ============================================================================
