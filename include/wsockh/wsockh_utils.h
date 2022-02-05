@@ -3,7 +3,7 @@
 
 #include <AsyncWebSocket.h>
 #include <inttypes.h>
-#include <comm_resultcode.h>
+#include <comm/comm_resultcode.h>
 #include <variable_store.h>
 
 #define WSOCKH_STRARGBUF_SIZE 4

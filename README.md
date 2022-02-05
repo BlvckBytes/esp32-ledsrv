@@ -22,11 +22,10 @@ Trying to properly implement async multi-client communication, which seems very 
 - [x] Frame/Pixel handler
 - [x] SD card JSON for variables
 - [x] SD card BINARY for frames
-- [ ] SD card BINARY file dump over socket (mostly for debugging)
-- [ ] Fix fast requests = message skip
+- [ ] Fix fast requests causing message skip
 - [x] Add reboot opcode
-- [ ] More granularity within dbg_log than just on/off
-- [ ] Actually implement frame drawing (fastled or diy)
+- [ ] More granularity within dbg_log than just on/off (level bitmasks)
+- [X] Actually implement frame drawing (fastled or diy)
 - [x] Add dev_name (SSID) pattern validation
 - [x] SD card hotplug
 - [ ] Calculate remaining space for BIN file and auto-calc max frame slots

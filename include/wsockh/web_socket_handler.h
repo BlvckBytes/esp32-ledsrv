@@ -11,8 +11,8 @@
 #include <wsockh/web_socket_handler.h>
 #include <led_frame_handler.h>
 #include <web_server_handler.h>
-#include <comm_opcode.h>
-#include <comm_resultcode.h>
+#include <comm/comm_opcode.h>
+#include <comm/comm_resultcode.h>
 #include <dbg_log.h>
 #include <sd_handler.h>
 #include <variable_store.h>
@@ -22,6 +22,7 @@
 
 #include <wsockh/wsockh_utils.h>
 #include <wsockh/wsockh_notifier.h>
+#include <wsockh/wsockh_remainder.h>
 
 // Request responders
 #include <wsockh/responders/wsockh_set_frame_dur.h>
@@ -49,7 +50,6 @@
 
 // Websocket config
 #define WSOCKH_PATH "/ws"
-#define WSOCKH_REQUEST_REMAINDERS_LEN 8
 #define WSOCKH_MSGBUF_SIZE 4096
 
 /*
@@ -57,15 +57,6 @@
                                    Types                                    
 ============================================================================
 */
-
-/**
- * @brief Used to save the remaining bytes of a early terminated request
- */
-typedef struct
-{
-  AsyncWebSocketClient *client;
-  uint64_t remainder;
-} wsockh_req_remainder_t;
 
 /**
  * @brief Used to represend individual request handler functions
