@@ -37,7 +37,7 @@ void wsockh_get_frame_cont(
 
     // Read frame content into local buffer
     uint8_t frame_data_buf[vars_get_num_pixels() * 3] = { 0 };
-    bool ret = lfh_frame_file_read(rd->frame_index, frame_data_buf);
+    bool ret = lfh_frame_file_read(rd->frame_index, 1, frame_data_buf);
 
     // Could not fetch the requested data
     if (!ret)

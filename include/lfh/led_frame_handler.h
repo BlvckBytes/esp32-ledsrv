@@ -74,8 +74,11 @@ void lfh_fill_frame_ringbuf();
 
 /**
  * @brief Read the next frame into the local ringbuffer
+ * 
+ * @param ringbuf_index Index to start writing at inside the ringbuffer
+ * @param num_frames Amount of frames to read and save
  */
-bool lfh_read_frame();
+bool lfh_read_frames(uint64_t ringbuf_index, uint64_t num_frames);
 
 /**
  * @brief Handle the current frame to be displayed and advance the index

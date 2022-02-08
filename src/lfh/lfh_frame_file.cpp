@@ -100,7 +100,7 @@ bool lfh_frame_file_write(uint16_t frame_index, uint8_t *frame_data)
   return true;
 }
 
-bool lfh_frame_file_read(uint16_t frame_index, uint8_t *out_buf)
+bool lfh_frame_file_read(uint16_t frame_index, uint16_t num_frames, uint8_t *out_buf)
 {
   // Open file if in pause mode
   if (lfh_is_paused())
@@ -119,7 +119,8 @@ bool lfh_frame_file_read(uint16_t frame_index, uint8_t *out_buf)
   // Read into buffer using as many 512 byte blocks as possible,
   // then read the remaining bytes at last iteration
   uint16_t frame_size = vars_get_num_pixels() * 3;
-  uint16_t num_blocks = ceil(((double) frame_size) / 512.0), buf_offs = 0;
+  uint16_t total_size = frame_size * num_frames;
+  uint16_t num_blocks = ceil(((double) total_size) / 512.0), buf_offs = 0;
   for (int i = 0; i < num_blocks; i++)
   {
     uint16_t curr_sz = i == num_blocks - 1 ? frame_size % 512 : 512;

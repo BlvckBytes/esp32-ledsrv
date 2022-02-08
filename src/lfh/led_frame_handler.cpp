@@ -65,16 +65,20 @@ uint16_t lfh_get_max_num_pixels()
 ============================================================================
 */
 
-bool lfh_read_frame(uint64_t ringbuf_index)
+bool lfh_read_frames(uint64_t ringbuf_index, uint64_t num_frames)
 {
   static uint64_t frame_index = 0;
 
   bool res = lfh_frame_file_read(
-    (frame_index++) % vars_get_num_frames(),
+    frame_index % vars_get_num_frames(),
+    num_frames,
     &lfh_frame_ringbuf[
       (ringbuf_index % LFH_FRAME_RINGBUF_SLOTS) * vars_get_num_pixels() * 3
     ]
   );
+
+  if (res)
+    frame_index += num_frames;
 
   return res;
 }
@@ -85,8 +89,11 @@ bool lfh_read_frame(uint64_t ringbuf_index)
  */
 void lfh_read_frames_task(void *arg)
 {
-  while (lfh_frame_ringbuf_index_w - lfh_frame_ringbuf_index_r < LFH_FRAME_RINGBUF_SLOTS / 2)
-    lfh_read_frame(lfh_frame_ringbuf_index_w++);
+  // Make the write index lead the read index by slots / 2
+  uint64_t num_frames = max((LFH_FRAME_RINGBUF_SLOTS / 2) - (int) (lfh_frame_ringbuf_index_w - lfh_frame_ringbuf_index_r), 0);
+  if (lfh_read_frames(lfh_frame_ringbuf_index_w, num_frames))
+    lfh_frame_ringbuf_index_w += num_frames;
+
   vTaskDelete(NULL);
 }
 
@@ -158,6 +165,11 @@ void lfh_handle_frame()
   if (millis() - last_render <= LHF_CONST_FRAME_TIME)
     return;
 
+  // Ringbuffer safety
+  if (lfh_frame_ringbuf_index_w <= lfh_frame_ringbuf_index_r)
+    return;
+
+  // Write out frame and read next frames into ringbuffer
   lfh_write_frame_ringbuf();
   lfh_fill_frame_ringbuf();
 

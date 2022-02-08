@@ -27,9 +27,10 @@ bool lfh_frame_file_write(uint16_t frame_index, uint8_t *frame_data);
  * @brief Read a frame from the frames file into a buffer
  * 
  * @param frame_index Index of the frame to read
+ * @param num_frames Number of frames to read at once
  * @param out_buf Buffer for the data of the frame
  */
-bool lfh_frame_file_read(uint16_t frame_index, uint8_t *out_buf);
+bool lfh_frame_file_read(uint16_t frame_index, uint16_t num_frames, uint8_t *out_buf);
 
 /**
  * @brief Get the maximum number of frame slots the file can store
