@@ -12,7 +12,6 @@
 #include <dbg_log.h>
 #include <variable_store.h>
 #include <FS.h>
-#include <Adafruit_NeoPixel.h>
 #include <lfh/lfh_rmt.h>
 #include <lfh/lfh_frame_file.h>
 #include <freertos/task.h>
@@ -24,17 +23,9 @@
 */
 
 #define LFH_MAX_PIXELS 1024
-
-// How many slots the ringbuffer storing frame data should have
 #define LFH_FRAME_RINGBUF_SLOTS 8
-
-// INFO: Hack test value, for now...
 #define LHF_CONST_FRAME_TIME 8
-
-// Drawing will be very fast, process on core 0 which does wifi
 #define LFH_DRAW_CORE 0
-
-// File read will take some time, process on core 1 which is mostly on user-tasks
 #define LFH_FILE_CORE 1
 
 /*
