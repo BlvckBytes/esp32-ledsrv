@@ -76,7 +76,9 @@ void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size);
 
 /**
  * @brief Write out the items from the transmission buffer onto the data line
+ * 
+ * @param async Whether or not to block
  */
-void lfh_rmt_write_items();
+void lfh_rmt_write_items(bool async);
 
 #endif

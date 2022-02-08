@@ -121,7 +121,7 @@ void lfh_rmt_copy_frame(uint8_t *frame_data, uint32_t frame_size)
   }
 }
 
-void lfh_rmt_write_items()
+void lfh_rmt_write_items(bool async)
 {
-  rmt_write_items(RMT_CHANNEL_0, (rmt_item32_t *) lfh_rmt_tx_data, lfh_rmt_tx_data_size, true);
+  rmt_write_items(RMT_CHANNEL_0, (rmt_item32_t *) lfh_rmt_tx_data, lfh_rmt_tx_data_size, !async);
 }

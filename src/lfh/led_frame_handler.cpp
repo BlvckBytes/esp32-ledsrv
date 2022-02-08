@@ -6,8 +6,9 @@
 ============================================================================
 */
 
-static long lfh_last_render;
 static uint8_t *lfh_frame_ringbuf;
+
+static uint64_t lfh_frame_ringbuf_index_w, lfh_frame_ringbuf_index_r;
 
 /**
  * @brief Allocate the frame ringbuffer based on the
@@ -19,14 +20,8 @@ void lfh_frame_ringbuf_alloc()
     LFH_FRAME_RINGBUF_SLOTS // This many times
     * vars_get_num_pixels() * 3; // This many frames
 
-  lfh_frame_ringbuf = (uint8_t *) malloc(total_size);
+  lfh_frame_ringbuf = (uint8_t *) calloc(1, total_size);
   dbg_log("Allocated %" PRIu32 " bytes's for the frame ringbuffer!\n", total_size);
-
-  // Initialize
-  for (size_t i = 0; i < total_size; i++)
-    lfh_frame_ringbuf[i] = 0;
-
-  dbg_log("Initialized the frame ringbuffer!\n");
 }
 
 /**
@@ -42,17 +37,15 @@ void lfh_init()
   // Open frame onto local frame handle
   lfh_frame_file_open();
 
-  // Reset frame timing
-  lfh_last_render = millis();
-
   // Allocate and initialize frame ringbuffer
   lfh_frame_ringbuf_alloc();
 
-  // Read first frame so that there's always one more frame read than used
-  lfh_read_frame();
-
   // Initialize RMT
   lfh_rmt_init();
+
+  // Initially fill the ringbuffer with frames so
+  // write has an advantage of read
+  lfh_fill_frame_ringbuf();
 }
 
 /*
@@ -72,49 +65,101 @@ uint16_t lfh_get_max_num_pixels()
 ============================================================================
 */
 
-bool lfh_read_frame()
+bool lfh_read_frame(uint64_t ringbuf_index)
 {
-  static size_t ringbuf_slot = 0;
-  static size_t frame_index = 0;
+  static uint64_t frame_index = 0;
 
-  if (!lfh_frame_file_read(
-    frame_index,
-    &lfh_frame_ringbuf[ringbuf_slot * vars_get_num_pixels() * 3]
-  )) return false;
+  bool res = lfh_frame_file_read(
+    (frame_index++) % vars_get_num_frames(),
+    &lfh_frame_ringbuf[
+      (ringbuf_index % LFH_FRAME_RINGBUF_SLOTS) * vars_get_num_pixels() * 3
+    ]
+  );
 
-  // Advance to next frame
-  if (++frame_index == vars_get_num_frames())
-    frame_index = 0;
+  return res;
+}
 
-  // Advance ringbuffer slot index, wrapping around
-  if (++ringbuf_slot == LFH_FRAME_RINGBUF_SLOTS)
-    ringbuf_slot = 0;
+/**
+ * @brief Read needed next frames task
+ * @param arg Unused task argument (keep NULL)
+ */
+void lfh_read_frames_task(void *arg)
+{
+  while (lfh_frame_ringbuf_index_w - lfh_frame_ringbuf_index_r < LFH_FRAME_RINGBUF_SLOTS / 2)
+    lfh_read_frame(lfh_frame_ringbuf_index_w++);
+  vTaskDelete(NULL);
+}
 
-  return true;
+/**
+ * @brief Write specific framebuffer frame on data pin
+ * @param arg Framebuffer index of target frame
+ */
+void lfh_write_frame_task(void *arg)
+{
+  // Copy frame from ringbuffer into RMT data buffer by transforming it to bits
+  lfh_rmt_copy_frame(&lfh_frame_ringbuf[
+    (*((uint64_t *) arg) % LFH_FRAME_RINGBUF_SLOTS) * vars_get_num_pixels() * 3
+  ], vars_get_num_pixels() * 3);
+
+  // Write out RMT data
+  lfh_rmt_write_items(true);
+  vTaskDelete(NULL);
+}
+
+void lfh_fill_frame_ringbuf()
+{
+  // Cancel previous task
+  static TaskHandle_t *read_frame_handle = NULL;
+  if (read_frame_handle) vTaskDelete(read_frame_handle);
+
+  // Request ring buffer fill
+  xTaskCreatePinnedToCore(
+    lfh_read_frames_task,
+    "read_frames",
+    2048,
+    read_frame_handle,
+    configMAX_PRIORITIES - 1,
+    read_frame_handle,
+    LFH_FILE_CORE
+  );
+}
+
+/**
+ * @brief Write the next frame from the ringbuffer onto the line
+ */
+void lfh_write_frame_ringbuf()
+{
+  // Allocate write index pointer initially
+  static uint64_t *write_index = NULL;
+  if (write_index == NULL)
+    write_index = (uint64_t *) malloc(sizeof(uint64_t));
+
+  // Cancel previous task
+  static TaskHandle_t *write_frame_handle = NULL;
+  if (write_frame_handle) vTaskDelete(write_frame_handle);
+
+  // Request frame draw
+  *write_index = lfh_frame_ringbuf_index_r++;
+  xTaskCreatePinnedToCore(
+    lfh_write_frame_task,
+    "write_frame",
+    2048,
+    write_index,
+    configMAX_PRIORITIES - 1,
+    write_frame_handle,
+    LFH_DRAW_CORE
+  );
 }
 
 void lfh_handle_frame()
 {
-  static size_t ringbuf_slot = 0;
-
-  // Read next frame in advance
-  // TODO: Invoke on second core for max. speed
-  if (!lfh_read_frame()) return;
-
-  // Copy frame from ringbuffer into RMT data buffer by transforming it to bits
-  lfh_rmt_copy_frame(&lfh_frame_ringbuf[
-    ringbuf_slot * vars_get_num_pixels() * 3
-  ], vars_get_num_pixels() * 3);
-
-  // Write out RMT data
-  lfh_rmt_write_items();
-
   // Inter-frame delay
   static long last_render = millis();
-  while (millis() - last_render <= LHF_CONST_FRAME_TIME);
-  last_render = millis();
+  if (millis() - last_render <= LHF_CONST_FRAME_TIME)
+    return;
 
-  // Advance ringbuffer slot index, wrapping around
-  if (++ringbuf_slot == LFH_FRAME_RINGBUF_SLOTS)
-    ringbuf_slot = 0;
+  lfh_write_frame_ringbuf();
+  lfh_fill_frame_ringbuf();
+
+  last_render = millis();
 }
